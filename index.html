@@ -140,18 +140,23 @@
     <div id="toast-container"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            projectId: "YOUR_PROJECT",
-            storageBucket: "YOUR_PROJECT.firebasestorage.app",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
+      // TODO: Add SDKs for Firebase products that you want to use
+      // https://firebase.google.com/docs/web/setup#available-libraries
+    
+      // Your web app's Firebase configuration
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
+        authDomain: "naraku-archievements.firebaseapp.com",
+        projectId: "naraku-archievements",
+        storageBucket: "naraku-archievements.firebasestorage.app",
+        messagingSenderId: "1077300098321",
+        appId: "1:1077300098321:web:3c4538e4387c09750948b0",
+        measurementId: "G-NV3MT8D2VV"
+      };
 
         const CLIENT_ID = '1500128602749141052';
         const REDIRECT_URI = window.location.origin + window.location.pathname;
