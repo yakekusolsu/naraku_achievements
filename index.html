@@ -20,6 +20,7 @@
             background: linear-gradient(145deg, #1e293b, #0f172a);
             border: 1px solid #334155;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
         }
 
         .achievement-card.locked {
@@ -33,22 +34,33 @@
             box-shadow: 0 20px 25px -5px rgba(56, 189, 248, 0.2);
         }
 
-        .discord-gradient {
-            background: linear-gradient(90deg, #5865F2, #4752C4);
-        }
-
         .progress-bar {
             height: 10px;
             background: #334155;
             border-radius: 5px;
             overflow: hidden;
-            position: relative;
         }
 
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #0ea5e9, #38bdf8);
-            transition: width 1.5s ease-in-out;
+            transition: width 0.5s ease-out;
+        }
+
+        .update-btn {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+
+        .update-btn:hover {
+            background: #38bdf8;
+            color: white;
         }
 
         #toast-container {
@@ -61,7 +73,6 @@
 </head>
 <body class="min-h-screen pb-20">
 
-    <!-- ナビゲーション -->
     <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3 group cursor-pointer">
@@ -71,7 +82,7 @@
                 <span class="text-xl font-black tracking-tighter italic">ABYSS <span class="text-sky-400">ACHIEVEMENTS</span></span>
             </div>
             <div id="auth-section">
-                <button id="nav-login-btn" class="discord-gradient px-6 py-2.5 rounded-full font-bold flex items-center space-x-2 hover:shadow-[0_0_15px_rgba(88,101,242,0.5)] transition-all active:scale-95">
+                <button id="nav-login-btn" class="bg-gradient-to-r from-[#5865F2] to-[#4752C4] px-6 py-2.5 rounded-full font-bold flex items-center space-x-2 hover:shadow-[0_0_15px_rgba(88,101,242,0.5)] transition-all active:scale-95">
                     <i class="fab fa-discord"></i>
                     <span>Discordで連携</span>
                 </button>
@@ -80,24 +91,18 @@
     </nav>
 
     <main class="max-w-6xl mx-auto px-4 mt-12">
+        <!-- Profile Section -->
         <div id="user-profile" class="hidden mb-12 p-8 rounded-3xl bg-slate-800/40 border border-slate-700/50 backdrop-blur-sm flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-10">
-            <div class="relative group">
-                <div class="absolute -inset-1 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000"></div>
-                <img id="user-avatar" src="" alt="Avatar" class="relative w-28 h-28 rounded-full border-4 border-slate-900 object-cover">
-                <div class="absolute bottom-2 right-2 w-7 h-7 bg-green-500 border-4 border-slate-900 rounded-full shadow-lg"></div>
-            </div>
+            <img id="user-avatar" src="" alt="Avatar" class="w-28 h-28 rounded-full border-4 border-slate-900 shadow-xl">
             <div class="flex-1 text-center md:text-left">
-                <div class="flex flex-col md:flex-row md:items-end md:space-x-4 mb-2">
-                    <h2 id="user-name" class="text-4xl font-black text-white">---</h2>
-                    <span id="user-rank" class="text-sky-400 font-bold mb-1">奈落の探索者</span>
-                </div>
-                <p class="text-slate-500 font-mono text-sm mb-6">ID: <span id="user-id">000000000000000000</span></p>
+                <h2 id="user-name" class="text-4xl font-black text-white mb-2">---</h2>
+                <p class="text-slate-500 font-mono text-sm mb-6">ID: <span id="user-id">---</span></p>
                 <div class="flex flex-wrap justify-center md:justify-start gap-4">
-                    <div class="bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-700 shadow-inner">
+                    <div class="bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-700">
                         <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">達成済みの試練</p>
-                        <p class="text-2xl font-black text-white"><span id="completion-count">0</span><span class="text-slate-600 text-sm mx-1">/</span><span id="total-count" class="text-slate-400">0</span></p>
+                        <p class="text-2xl font-black text-white"><span id="completion-count">0</span> / <span id="total-count">0</span></p>
                     </div>
-                    <div class="bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-700 shadow-inner">
+                    <div class="bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-700">
                         <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">達成率</p>
                         <p id="completion-percent" class="text-2xl font-black text-sky-400">0%</p>
                     </div>
@@ -105,32 +110,13 @@
             </div>
         </div>
 
-        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-            <div>
-                <h3 class="text-2xl font-black text-white flex items-center">
-                    <span class="w-2 h-8 bg-sky-500 rounded-full mr-4"></span>
-                    実績アーカイブ
-                </h3>
-                <p class="text-slate-500 text-sm mt-1 ml-6">奈落での活動はすべて記録されています。</p>
-            </div>
-            <div class="flex bg-slate-800/50 p-1 rounded-xl border border-slate-700">
-                <button id="filter-all" class="filter-btn active bg-sky-500 text-white px-5 py-2 rounded-lg text-sm font-bold transition">すべて</button>
-                <button id="filter-unlocked" class="filter-btn px-5 py-2 rounded-lg text-sm font-bold transition text-slate-400 hover:text-white">獲得済み</button>
-            </div>
-        </div>
-
         <div id="achievements-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
     </main>
 
     <div id="login-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-[100] px-4">
-        <div class="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 max-w-md w-full text-center shadow-2xl">
-            <div class="relative w-24 h-24 bg-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-8 transform rotate-12">
-                <i class="fas fa-lock text-4xl text-sky-400 transform -rotate-12"></i>
-                <div class="absolute -top-2 -right-2 w-6 h-6 bg-sky-500 rounded-full animate-ping"></div>
-            </div>
-            <h2 class="text-3xl font-black mb-4 text-white">深淵へようこそ</h2>
-            <p class="text-slate-400 mb-10 leading-relaxed text-sm">奈落鯖での実績をリアルタイムで同期するには、Discordアカウントの認可が必要です。</p>
-            <button id="modal-login-btn" class="w-full discord-gradient py-5 rounded-2xl font-black text-lg flex items-center justify-center space-x-4 hover:scale-[1.03] transition-all shadow-xl active:scale-95">
+        <div class="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 max-w-md w-full text-center">
+            <h2 class="text-3xl font-black mb-4 text-white">連携が必要です</h2>
+            <button id="modal-login-btn" class="w-full bg-gradient-to-r from-[#5865F2] to-[#4752C4] py-5 rounded-2xl font-black text-lg flex items-center justify-center space-x-4">
                 <i class="fab fa-discord text-2xl"></i>
                 <span>Discordで今すぐ連携</span>
             </button>
@@ -140,54 +126,56 @@
     <div id="toast-container"></div>
 
     <script type="module">
-      // Import the functions you need from the SDKs you need
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-      import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
       // TODO: Add SDKs for Firebase products that you want to use
       // https://firebase.google.com/docs/web/setup#available-libraries
     
       // Your web app's Firebase configuration
       // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-      const firebaseConfig = {
-        apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
-        authDomain: "naraku-archievements.firebaseapp.com",
-        projectId: "naraku-archievements",
-        storageBucket: "naraku-archievements.firebasestorage.app",
-        messagingSenderId: "1077300098321",
-        appId: "1:1077300098321:web:3c4538e4387c09750948b0",
-        measurementId: "G-NV3MT8D2VV"
-      };
+        const firebaseConfig = {
+          apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
+          authDomain: "naraku-archievements.firebaseapp.com",
+          projectId: "naraku-archievements",
+          storageBucket: "naraku-archievements.firebasestorage.app",
+          messagingSenderId: "1077300098321",
+          appId: "1:1077300098321:web:3c4538e4387c09750948b0",
+          measurementId: "G-NV3MT8D2VV"
+        };
 
         const CLIENT_ID = '1500128602749141052';
         const REDIRECT_URI = window.location.origin + window.location.pathname;
-        const APP_ID_PATH = 'naraku-achievements'; 
+        const APP_ID = 'naraku-achievements'; 
 
         let db = null;
+        let currentUser = null;
         let achievementData = [
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1, current: 0 },
             { id: "talker", title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000, current: 0 },
-            { id: "regular", title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 0 },
-            { id: "nightowl", title: "夜更かし", desc: "午前3時にメッセージを送信する", icon: "fa-moon", color: "text-yellow-200", requirement: 1, current: 0 },
-            { id: "reaction", title: "リアクション王", desc: "他人の投稿に合計500個のリアクションを付ける", icon: "fa-grin-squint", color: "text-pink-400", requirement: 500, current: 0 },
-            { id: "staff", title: "奈落の守護者", desc: "管理スタッフとしてサーバーに貢献する", icon: "fa-shield-halved", color: "text-red-400", requirement: 1, current: 0 },
-            { id: "host", title: "イベント主催者", desc: "VCでイベントを1回以上開催する", icon: "fa-trophy", color: "text-yellow-500", requirement: 1, current: 0 },
-            { id: "info", title: "情報の運び屋", desc: "役立つリンクを10回以上シェアする", icon: "fa-link", color: "text-cyan-400", requirement: 10, current: 0 },
-            { id: "secret", title: "深淵を覗く者", desc: "秘密のチャンネルを発見する", icon: "fa-eye", color: "text-indigo-500", requirement: 1, current: 0 }
+            { id: "regular", title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 0 }
         ];
 
-        let currentFilter = 'all';
+        // 🟢 リアルタイムでFirestoreを更新する関数
+        const updateStatInFirestore = async (statId, newValue) => {
+            if (!db || !currentUser) return;
+            const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUser.id);
+            try {
+                // merge: true で、他の数値を消さずに特定の項目だけ更新
+                await setDoc(docRef, { [statId]: newValue }, { merge: true });
+                console.log(`Updated ${statId} to ${newValue}`);
+            } catch (e) {
+                console.error("Update failed:", e);
+            }
+        };
 
         function showToast(title) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = 'mb-4 bg-slate-900 border border-sky-500 p-4 rounded-2xl shadow-2xl flex items-center space-x-4 transition-all duration-500 ease-out translate-y-10 opacity-0';
-            toast.innerHTML = `<div class="bg-sky-500 p-2 rounded-lg text-white"><i class="fas fa-award"></i></div><div><p class="text-xs text-sky-400 font-bold uppercase">実績を解除しました！</p><p class="text-white font-bold">${title}</p></div>`;
+            toast.className = 'mb-4 bg-slate-900 border border-sky-500 p-4 rounded-2xl shadow-2xl flex items-center space-x-4 animate-bounce';
+            toast.innerHTML = `<div class="bg-sky-500 p-2 rounded-lg text-white"><i class="fas fa-award"></i></div><div><p class="text-white font-bold">${title} 解除！</p></div>`;
             container.appendChild(toast);
-            setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 100);
-            setTimeout(() => {
-                toast.classList.add('translate-y-[-10px]', 'opacity-0');
-                setTimeout(() => toast.remove(), 500);
-            }, 5000);
+            setTimeout(() => toast.remove(), 4000);
         }
 
         const renderAchievements = () => {
@@ -195,35 +183,39 @@
             if(!grid) return;
             grid.innerHTML = '';
             
-            const processed = achievementData.map(a => ({
-                ...a,
-                isUnlocked: a.current >= a.requirement
-            }));
+            const unlockedCount = achievementData.filter(a => a.current >= a.requirement).length;
 
-            const filtered = processed.filter(a => currentFilter === 'unlocked' ? a.isUnlocked : true);
-            const unlockedCount = processed.filter(a => a.isUnlocked).length;
-
-            filtered.forEach(ach => {
+            achievementData.forEach(ach => {
+                const isUnlocked = ach.current >= ach.requirement;
                 const progressPercent = Math.min(100, (ach.current / ach.requirement) * 100);
                 const card = document.createElement('div');
-                card.className = `achievement-card p-8 rounded-[2rem] flex flex-col h-full ${!ach.isUnlocked ? 'locked' : ''}`;
+                card.className = `achievement-card p-8 rounded-[2rem] flex flex-col h-full ${!isUnlocked ? 'locked' : ''}`;
                 card.innerHTML = `
                     <div class="flex items-start justify-between mb-6">
-                        <div class="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-700 shadow-inner">
+                        <div class="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-700">
                             <i class="fas ${ach.icon} ${ach.color} text-3xl"></i>
                         </div>
-                        ${ach.isUnlocked ? '<span class="bg-sky-500/10 text-sky-400 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-tighter border border-sky-500/20">Archived</span>' : '<i class="fas fa-lock text-slate-700"></i>'}
                     </div>
-                    <h4 class="font-black text-xl mb-2 text-white tracking-tight">${ach.title}</h4>
-                    <p class="text-sm text-slate-500 mb-8 leading-relaxed flex-grow">${ach.desc}</p>
+                    <h4 class="font-black text-xl mb-2 text-white">${ach.title}</h4>
+                    <p class="text-sm text-slate-500 mb-8 flex-grow">${ach.desc}</p>
                     <div class="mt-auto space-y-3">
                         <div class="flex justify-between items-end">
-                            <span class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Progress</span>
-                            <span class="text-sm font-bold ${ach.isUnlocked ? 'text-sky-400' : 'text-slate-400'}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
+                            <span class="text-sm font-bold text-slate-400">${ach.current} / ${ach.requirement}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+                        <button class="update-btn" data-id="${ach.id}" data-current="${ach.current}">
+                            <i class="fas fa-plus mr-1"></i> テスト加算
+                        </button>
                     </div>
                 `;
+                
+                // ボタンにクリックイベントを追加
+                card.querySelector('.update-btn').addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const current = parseInt(e.currentTarget.getAttribute('data-current'));
+                    updateStatInFirestore(id, current + 1); // Firestoreの数値を+1する
+                });
+
                 grid.appendChild(card);
             });
 
@@ -232,16 +224,11 @@
             document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementData.length) * 100)}%`;
         };
 
-        const login = () => {
-            const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`;
-            window.location.href = url;
-        };
-
         const init = async () => {
-            document.getElementById('nav-login-btn')?.addEventListener('click', login);
-            document.getElementById('modal-login-btn')?.addEventListener('click', login);
-            document.getElementById('filter-all')?.addEventListener('click', () => { currentFilter = 'all'; renderAchievements(); });
-            document.getElementById('filter-unlocked')?.addEventListener('click', () => { currentFilter = 'unlocked'; renderAchievements(); });
+            document.getElementById('nav-login-btn').onclick = () => {
+                window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`;
+            };
+            document.getElementById('modal-login-btn').onclick = document.getElementById('nav-login-btn').onclick;
 
             try {
                 const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
@@ -257,34 +244,25 @@
             if (token) {
                 const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
                 if (res.ok) {
-                    const user = await res.json();
+                    currentUser = await res.json();
                     document.getElementById('login-modal').classList.add('hidden');
                     document.getElementById('user-profile').classList.remove('hidden');
-                    document.getElementById('user-name').innerText = user.global_name || user.username;
-                    document.getElementById('user-id').innerText = user.id;
-                    document.getElementById('user-avatar').src = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/0.png`;
+                    document.getElementById('user-name').innerText = currentUser.global_name || currentUser.username;
+                    document.getElementById('user-id').innerText = currentUser.id;
+                    document.getElementById('user-avatar').src = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`;
                     
-                    if (db) {
-                        const statsDoc = doc(db, 'artifacts', APP_ID_PATH, 'public', 'data', 'userStats', user.id);
-                        onSnapshot(statsDoc, (snapshot) => {
-                            if (snapshot.exists()) {
-                                const data = snapshot.data();
-                                // ✅ 修正ポイント：データを強制的に「数値(Number)」に変換する
-                                achievementData = achievementData.map(ach => {
-                                    const rawVal = data[ach.id];
-                                    const newVal = (rawVal !== undefined && rawVal !== null) ? Number(rawVal) : 0;
-                                    
-                                    // 達成通知の判定
-                                    if (newVal >= ach.requirement && ach.current < ach.requirement) {
-                                        showToast(ach.title);
-                                    }
-                                    return { ...ach, current: newVal };
-                                });
-                                renderAchievements();
-                            }
-                        });
-                    }
-                    window.history.replaceState(null, null, REDIRECT_URI);
+                    const statsDoc = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUser.id);
+                    onSnapshot(statsDoc, (snapshot) => {
+                        if (snapshot.exists()) {
+                            const data = snapshot.data();
+                            achievementData = achievementData.map(ach => {
+                                const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
+                                if (newVal >= ach.requirement && ach.current < ach.requirement) showToast(ach.title);
+                                return { ...ach, current: newVal };
+                            });
+                            renderAchievements();
+                        }
+                    });
                 }
             }
             renderAchievements();
