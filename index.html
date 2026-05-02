@@ -419,6 +419,9 @@
                             <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
+                        <button class="update-btn" data-id="${ach.id}">
+                            <i class="fas fa-plus mr-1"></i> Add 1
+                        </button>
                     </div>
                 `;
                 
