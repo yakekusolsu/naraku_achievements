@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奈落鯖実績確認サイト</title>
+    <title>Abyss Achievements - Discord Style</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -25,7 +25,9 @@
             background-color: var(--bg-deep);
             color: var(--text-normal);
             margin: 0;
-            overflow: hidden;
+            /* スマホでのスクロールを許可 */
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .app-container {
@@ -34,14 +36,30 @@
             width: 100vw;
         }
 
+        /* モバイルではサイドバーを隠す */
         .server-sidebar {
             width: 72px;
             background-color: var(--bg-deep);
-            display: flex;
+            display: none; 
             flex-direction: column;
             align-items: center;
             padding-top: 12px;
             gap: 8px;
+        }
+
+        .channel-sidebar {
+            width: 240px;
+            background-color: var(--bg-sidebar);
+            display: none;
+            flex-direction: column;
+            border-top-left-radius: 8px;
+        }
+
+        /* PCサイズ(768px以上)でサイドバーを表示 */
+        @media (min-width: 768px) {
+            body { overflow: hidden; }
+            .server-sidebar { display: flex; }
+            .channel-sidebar { display: flex; }
         }
 
         .server-icon {
@@ -78,20 +96,13 @@
             border-radius: 0 4px 4px 0;
         }
 
-        .channel-sidebar {
-            width: 240px;
-            background-color: var(--bg-sidebar);
-            display: flex;
-            flex-direction: column;
-            border-top-left-radius: 8px;
-        }
-
         .main-content {
             flex: 1;
             background-color: var(--bg-main);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            width: 100%;
         }
 
         .main-content::-webkit-scrollbar { width: 16px; }
@@ -153,6 +164,13 @@
         .update-btn:hover {
             background: #6d6f78;
         }
+
+        /* ヘッダー検索窓のモバイル調整 */
+        @media (max-width: 640px) {
+            .header-search { display: none; }
+            .user-profile-header { flex-direction: column; align-items: center; text-align: center; }
+            .user-profile-header img { margin-bottom: 1rem; margin-right: 0 !important; }
+        }
     </style>
 </head>
 <body>
@@ -211,7 +229,7 @@
                     <i class="fas fa-bell"></i>
                     <i class="fas fa-thumbtack"></i>
                     <i class="fas fa-user-group"></i>
-                    <div class="relative">
+                    <div class="relative header-search">
                         <input type="text" placeholder="検索" class="bg-bg-deep px-2 py-0.5 rounded text-sm w-32 focus:w-48 transition-all">
                     </div>
                     <i class="fas fa-inbox"></i>
@@ -219,28 +237,30 @@
                 </div>
             </header>
 
-            <div class="p-8">
+            <div class="p-4 md:p-8">
                 <div id="user-profile" class="hidden mb-12 bg-bg-sidebar rounded-lg overflow-hidden border border-[#1f2023]">
                     <div class="h-24 bg-discord-blue"></div>
-                    <div class="p-6 pt-0 -mt-12 flex flex-col md:flex-row items-end md:items-center space-y-4 md:space-y-0 md:space-x-6">
+                    <div class="p-6 pt-0 -mt-12 flex flex-col md:flex-row items-center md:items-end md:space-x-6">
                         <div class="relative">
                             <img id="user-avatar" src="" class="w-24 h-24 rounded-full border-[6px] border-bg-sidebar bg-bg-sidebar">
                             <div class="absolute bottom-2 right-2 w-6 h-6 bg-discord-green border-[4px] border-bg-sidebar rounded-full"></div>
                         </div>
-                        <div class="flex-1">
-                            <h2 id="user-name" class="text-2xl font-bold text-white flex items-center">--- <span class="ml-2 text-text-muted font-normal text-sm">#<span id="user-id-suffix">0000</span></span></h2>
-                            <div class="flex space-x-4 mt-2">
+                        <div class="flex-1 text-center md:text-left mt-4 md:mt-0">
+                            <h2 id="user-name" class="text-2xl font-bold text-white flex flex-col md:flex-row items-center md:justify-start justify-center">--- <span class="md:ml-2 text-text-muted font-normal text-sm">#<span id="user-id-suffix">0000</span></span></h2>
+                            <div class="flex justify-center md:justify-start space-x-4 mt-2">
                                 <span class="text-xs font-bold uppercase text-text-muted">実績達成率: <span id="completion-percent" class="text-white">0%</span></span>
                                 <span class="text-xs font-bold uppercase text-text-muted">解除済み: <span id="completion-count" class="text-white">0</span> / <span id="total-count">0</span></span>
                             </div>
                         </div>
-                        <button id="nav-login-btn" class="discord-btn">
-                            <i class="fab fa-discord mr-2"></i> Discordで再認証
-                        </button>
+                        <div class="mt-6 md:mt-0">
+                            <button id="nav-login-btn" class="discord-btn w-full md:w-auto">
+                                <i class="fab fa-discord mr-2"></i> Discordで再認証
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div id="achievements-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div id="achievements-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Cards injected here -->
                 </div>
             </div>
@@ -281,11 +301,9 @@
 
         let db = null;
         let currentUser = null;
-        let userStatsMap = {}; // Current values from Firestore
+        let userStatsMap = {}; 
 
-        // --- 手動で設定した実績データ ---
         const achievementDataMaster = [
-            // カテゴリ：日常 (15個)
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
             { id: "talker_1", title: "おしゃべり好き Lv.1", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000 },
             { id: "talker_2", title: "おしゃべり好き Lv.2", desc: "合計5,000メッセージを送信する", icon: "fa-comments", color: "text-green-500", requirement: 5000 },
@@ -301,8 +319,6 @@
             { id: "morning_1", title: "早起き Lv.1", desc: "早朝6時台に10回発言する", icon: "fa-sun", color: "text-orange-300", requirement: 10 },
             { id: "morning_2", title: "早起き Lv.2", desc: "早朝6時台に50回発言する", icon: "fa-sun", color: "text-orange-400", requirement: 50 },
             { id: "morning_3", title: "朝日を拝む者", desc: "早朝6時台に200回発言する", icon: "fa-cloud-sun", color: "text-orange-500", requirement: 200 },
-
-            // カテゴリ：交流 (15個)
             { id: "mention_1", title: "メンション Lv.1", desc: "メンションを50回送る", icon: "fa-at", color: "text-red-300", requirement: 50 },
             { id: "mention_2", title: "メンション Lv.2", desc: "メンションを200回送る", icon: "fa-at", color: "text-red-400", requirement: 200 },
             { id: "mention_3", title: "通知の嵐", desc: "メンションを500回送る", icon: "fa-bullhorn", color: "text-red-500", requirement: 500 },
@@ -318,8 +334,6 @@
             { id: "long_text_1", title: "語り部 Lv.1", desc: "500文字以上の発言を5回行う", icon: "fa-feather", color: "text-amber-300", requirement: 5 },
             { id: "long_text_2", title: "語り部 Lv.2", desc: "1000文字以上の発言を10回行う", icon: "fa-feather-pointed", color: "text-amber-400", requirement: 10 },
             { id: "long_text_3", title: "奈落の書記官", desc: "2000文字以上の発言を30回行う", icon: "fa-book", color: "text-amber-500", requirement: 30 },
-
-            // カテゴリ：通話 (15個)
             { id: "vc_1", title: "聞き上手 Lv.1", desc: "VCに合計10時間滞在する", icon: "fa-headset", color: "text-sky-300", requirement: 10 },
             { id: "vc_2", title: "聞き上手 Lv.2", desc: "VCに合計50時間滞在する", icon: "fa-headset", color: "text-sky-400", requirement: 50 },
             { id: "vc_3", title: "聞き上手 Lv.3", desc: "VCに合計100時間滞在する", icon: "fa-headphones", color: "text-sky-500", requirement: 100 },
@@ -335,8 +349,6 @@
             { id: "vc_entry_2", title: "通話参加 Lv.2", desc: "VCに50回入室する", icon: "fa-door-open", color: "text-slate-400", requirement: 50 },
             { id: "vc_entry_3", title: "神出鬼没", desc: "VCに200回入室する", icon: "fa-bolt-lightning", color: "text-slate-500", requirement: 200 },
             { id: "vc_marathon", title: "VCマラソン", desc: "一度の入室で12時間以上滞在する", icon: "fa-stopwatch", color: "text-yellow-600", requirement: 1 },
-
-            // カテゴリ：継続 (15個)
             { id: "regular_1", title: "常連客 Lv.1", desc: "サーバーに参加してから30日が経過する", icon: "fa-calendar-day", color: "text-purple-300", requirement: 30 },
             { id: "regular_2", title: "常連客 Lv.2", desc: "サーバーに参加してから90日が経過する", icon: "fa-calendar-week", color: "text-purple-400", requirement: 90 },
             { id: "regular_3", title: "常連客 Lv.3", desc: "サーバーに参加してから180日が経過する", icon: "fa-calendar-check", color: "text-purple-500", requirement: 180 },
@@ -352,8 +364,6 @@
             { id: "holiday_user", title: "祝日の皆勤賞", desc: "祝日に合計10回発言する", icon: "fa-flag", color: "text-red-500", requirement: 10 },
             { id: "weekend_user", title: "週末の主", desc: "土日に合計50回発言する", icon: "fa-couch", color: "text-indigo-400", requirement: 50 },
             { id: "loyal_user", title: "忠誠の証", desc: "Nitroブーストを累計3ヶ月継続する", icon: "fa-gem", color: "text-pink-600", requirement: 3 },
-
-            // カテゴリ：特殊・貢献 (15個 + 新規追加分)
             { id: "bump_1", title: "広報担当 Lv.1", desc: "サーバー宣伝コマンドを10回実行する", icon: "fa-bullhorn", color: "text-yellow-300", requirement: 10 },
             { id: "bump_2", title: "広報担当 Lv.2", desc: "サーバー宣伝コマンドを50回実行する", icon: "fa-bullhorn", color: "text-yellow-400", requirement: 50 },
             { id: "bump_3", title: "奈落の宣伝隊長", desc: "サーバー宣伝コマンドを200回実行する", icon: "fa-megaphone", color: "text-yellow-500", requirement: 200 },
@@ -369,8 +379,6 @@
             { id: "event_fan", title: "イベント好き", desc: "公式イベントに3回参加する", icon: "fa-ticket", color: "text-orange-500", requirement: 3 },
             { id: "deep_abyss", title: "深淵の管理者", desc: "合計メッセージ数が100,000を超える", icon: "fa-skull-crossbones", color: "text-red-700", requirement: 100000 },
             { id: "legend", title: "奈落の伝説", desc: "合計50個以上の実績を解除する", icon: "fa-gem", color: "text-violet-500", requirement: 50 },
-            
-            // --- サーバーブースト関連の追加実績 ---
             { id: "boost_multi_1", title: "熱烈な支持者", desc: "同時に2つ以上のブーストを維持する", icon: "fa-rocket", color: "text-pink-400", requirement: 2 },
             { id: "boost_multi_2", title: "奈落の太柱", desc: "同時に5つ以上のブーストを維持する", icon: "fa-rocket", color: "text-pink-500", requirement: 5 },
             { id: "boost_long_1", title: "継続の星", desc: "累計半年間ブーストを継続する", icon: "fa-star", color: "text-yellow-400", requirement: 6 },
@@ -477,10 +485,9 @@
                     onSnapshot(statsDoc, (snapshot) => {
                         if (snapshot.exists()) {
                             const data = snapshot.data();
-                            userStatsMap = data; // Update global map
+                            userStatsMap = data; 
                             achievementData = achievementData.map(ach => {
                                 const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
-                                // Only show toast if it's a new achievement unlocked in this session
                                 if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) {
                                     showToast(ach.title);
                                 }
