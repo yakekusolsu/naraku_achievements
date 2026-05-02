@@ -65,7 +65,8 @@
                 <span class="text-xl font-bold tracking-wider uppercase">Abyss <span class="text-sky-400">Achievements</span></span>
             </div>
             <div id="auth-section">
-                <button id="login-btn" onclick="redirectToDiscord()" class="discord-gradient px-6 py-2 rounded-full font-bold flex items-center space-x-2 hover:opacity-90 transition active:scale-95">
+                <!-- IDを付与してJSからイベントを登録するように変更 -->
+                <button id="nav-login-btn" class="discord-gradient px-6 py-2 rounded-full font-bold flex items-center space-x-2 hover:opacity-90 transition active:scale-95">
                     <i class="fab fa-discord"></i>
                     <span>Discordでログイン</span>
                 </button>
@@ -100,8 +101,8 @@
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-xl font-bold border-l-4 border-sky-500 pl-4 text-white">実績一覧</h3>
             <div class="flex space-x-2">
-                <button onclick="filterAchievements('all')" class="text-sm bg-slate-800 px-3 py-1 rounded hover:bg-slate-700 transition">すべて</button>
-                <button onclick="filterAchievements('unlocked')" class="text-sm bg-slate-800 px-3 py-1 rounded hover:bg-slate-700 transition">達成済み</button>
+                <button id="filter-all" class="text-sm bg-slate-800 px-3 py-1 rounded hover:bg-slate-700 transition">すべて</button>
+                <button id="filter-unlocked" class="text-sm bg-slate-800 px-3 py-1 rounded hover:bg-slate-700 transition">達成済み</button>
             </div>
         </div>
 
@@ -118,7 +119,7 @@
             </div>
             <h2 class="text-2xl font-bold mb-4">実績を同期しよう</h2>
             <p class="text-slate-400 mb-8">奈落鯖でのあなたの伝説を確認するには、Discordアカウントとの連携が必要です。</p>
-            <button onclick="redirectToDiscord()" class="w-full discord-gradient py-4 rounded-xl font-bold text-lg flex items-center justify-center space-x-3 hover:scale-[1.02] transition active:scale-95">
+            <button id="modal-login-btn" class="w-full discord-gradient py-4 rounded-xl font-bold text-lg flex items-center justify-center space-x-3 hover:scale-[1.02] transition active:scale-95">
                 <i class="fab fa-discord text-2xl"></i>
                 <span>Discordで今すぐ連携</span>
             </button>
@@ -132,7 +133,7 @@
                 <i class="fas fa-exclamation-triangle mr-2"></i> エラー
             </h3>
             <p id="alert-message" class="text-slate-300 mb-4 text-sm"></p>
-            <button onclick="document.getElementById('custom-alert').style.display='none'" class="w-full bg-slate-800 py-2 rounded font-bold hover:bg-slate-700 transition">閉じる</button>
+            <button id="close-alert-btn" class="w-full bg-slate-800 py-2 rounded font-bold hover:bg-slate-700 transition">閉じる</button>
         </div>
     </div>
 
@@ -147,7 +148,7 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         
-        window.appId = 'naraku-achievements';
+        const appId = 'naraku-achievements';
         const CLIENT_ID = '1500128602749141052'; 
         const REDIRECT_URI = window.location.origin + window.location.pathname;
 
@@ -170,8 +171,8 @@
             document.getElementById('custom-alert').style.display = 'flex';
         }
 
-        // グローバルに関数を公開 (HTMLから呼び出せるようにする)
-        window.redirectToDiscord = () => {
+        // Discord認可へのリダイレクト関数
+        const redirectToDiscord = () => {
             if (!CLIENT_ID || CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
                 showAlert('Client IDが設定されていません。');
                 return;
@@ -179,16 +180,6 @@
             const scope = encodeURIComponent('identify');
             const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=${scope}`;
             window.location.href = url;
-        };
-
-        window.filterAchievements = (type) => {
-            currentFilter = type;
-            renderAchievements();
-        };
-
-        window.logout = () => {
-            window.location.hash = '';
-            window.location.href = REDIRECT_URI;
         };
 
         function renderAchievements() {
@@ -232,7 +223,7 @@
 
         // Firestore リアルタイム同期設定
         function setupRealtimeStats(discordId) {
-            const statsDoc = doc(db, 'artifacts', window.appId, 'public', 'data', 'userStats', discordId);
+            const statsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'userStats', discordId);
             
             onSnapshot(statsDoc, (snapshot) => {
                 if (snapshot.exists()) {
@@ -242,7 +233,6 @@
                         current: data[ach.id] !== undefined ? data[ach.id] : 0
                     }));
                 } else {
-                    // データがない場合は0リセット
                     achievementData = achievementData.map(ach => ({ ...ach, current: 0 }));
                 }
                 renderAchievements();
@@ -251,9 +241,27 @@
             });
         }
 
+        // イベントリスナーの登録
+        const setupEventListeners = () => {
+            document.getElementById('nav-login-btn')?.addEventListener('click', redirectToDiscord);
+            document.getElementById('modal-login-btn')?.addEventListener('click', redirectToDiscord);
+            document.getElementById('close-alert-btn')?.addEventListener('click', () => {
+                document.getElementById('custom-alert').style.display = 'none';
+            });
+            document.getElementById('filter-all')?.addEventListener('click', () => {
+                currentFilter = 'all';
+                renderAchievements();
+            });
+            document.getElementById('filter-unlocked')?.addEventListener('click', () => {
+                currentFilter = 'unlocked';
+                renderAchievements();
+            });
+        };
+
         // 初期化実行
         const init = async () => {
-            // 匿名認証してFirestoreへの接続権限を得る
+            setupEventListeners();
+            
             try {
                 await signInAnonymously(auth);
             } catch (e) {
@@ -281,18 +289,22 @@
                         : `https://cdn.discordapp.com/embed/avatars/0.png`;
                     document.getElementById('user-avatar').src = avatarUrl;
                     
-                    document.getElementById('auth-section').innerHTML = `
-                        <div class="flex items-center space-x-3 bg-slate-800 p-1 pr-4 rounded-full border border-slate-700">
-                            <img src="${avatarUrl}" class="w-8 h-8 rounded-full">
-                            <span class="font-medium text-sm">${user.username}</span>
-                            <button onclick="logout()" class="text-slate-500 hover:text-red-400 ml-2"><i class="fas fa-sign-out-alt"></i></button>
-                        </div>
-                    `;
+                    const authContainer = document.getElementById('auth-section');
+                    if (authContainer) {
+                        authContainer.innerHTML = `
+                            <div class="flex items-center space-x-3 bg-slate-800 p-1 pr-4 rounded-full border border-slate-700">
+                                <img src="${avatarUrl}" class="w-8 h-8 rounded-full">
+                                <span class="font-medium text-sm">${user.username}</span>
+                                <button id="logout-btn" class="text-slate-500 hover:text-red-400 ml-2"><i class="fas fa-sign-out-alt"></i></button>
+                            </div>
+                        `;
+                        document.getElementById('logout-btn')?.addEventListener('click', () => {
+                            window.location.hash = '';
+                            window.location.href = REDIRECT_URI;
+                        });
+                    }
                     
-                    // URLを綺麗にする
                     window.history.replaceState(null, null, REDIRECT_URI);
-                    
-                    // Firestore同期開始
                     setupRealtimeStats(user.id);
                 } else {
                     showAlert('Discordユーザー情報の取得に失敗しました。');
