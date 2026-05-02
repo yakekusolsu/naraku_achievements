@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奈落鯖実績システム - Abyss Achievements</title>
+    <title>奈落鯖実績システム - Abyss Achievements Full Map</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -13,23 +13,24 @@
             font-family: 'Noto Sans JP', sans-serif;
             background-color: #0f172a;
             color: #f1f5f9;
+            overflow-x: hidden;
         }
 
         .achievement-card {
             background: linear-gradient(145deg, #1e293b, #0f172a);
             border: 1px solid #334155;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .achievement-card.locked {
             filter: grayscale(1);
-            opacity: 0.6;
+            opacity: 0.5;
         }
 
         .achievement-card:hover:not(.locked) {
-            transform: translateY(-5px);
+            transform: translateY(-8px) scale(1.02);
             border-color: #38bdf8;
-            box-shadow: 0 10px 20px -5px rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 25px -5px rgba(56, 189, 248, 0.2);
         }
 
         .discord-gradient {
@@ -37,30 +38,50 @@
         }
 
         .progress-bar {
-            height: 8px;
+            height: 10px;
             background: #334155;
-            border-radius: 4px;
+            border-radius: 5px;
             overflow: hidden;
+            position: relative;
         }
 
         .progress-fill {
             height: 100%;
-            background: #38bdf8;
-            transition: width 1s ease-in-out;
+            background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+            transition: width 1.5s ease-in-out;
+        }
+
+        /* 解除時のアニメーション */
+        @keyframes unlock-glow {
+            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(56, 189, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+        .unlocked-now {
+            animation: unlock-glow 1s ease-out;
+        }
+
+        #toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 200;
         }
     </style>
 </head>
-<body class="min-h-screen pb-12">
+<body class="min-h-screen pb-20">
 
     <!-- ナビゲーション -->
-    <nav class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+    <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-                <i class="fas fa-ghost text-sky-400 text-2xl"></i>
-                <span class="text-xl font-bold tracking-wider uppercase">Abyss <span class="text-sky-400">Achievements</span></span>
+            <div class="flex items-center space-x-3 group cursor-pointer">
+                <div class="p-2 bg-sky-500/10 rounded-lg group-hover:bg-sky-500/20 transition">
+                    <i class="fas fa-ghost text-sky-400 text-2xl"></i>
+                </div>
+                <span class="text-xl font-black tracking-tighter italic">ABYSS <span class="text-sky-400">ACHIEVEMENTS</span></span>
             </div>
             <div id="auth-section">
-                <button id="nav-login-btn" class="discord-gradient px-6 py-2 rounded-full font-bold flex items-center space-x-2 hover:opacity-90 transition active:scale-95">
+                <button id="nav-login-btn" class="discord-gradient px-6 py-2.5 rounded-full font-bold flex items-center space-x-2 hover:shadow-[0_0_15px_rgba(88,101,242,0.5)] transition-all active:scale-95">
                     <i class="fab fa-discord"></i>
                     <span>Discordで連携</span>
                 </button>
@@ -69,43 +90,72 @@
     </nav>
 
     <!-- メインコンテンツ -->
-    <main class="max-w-6xl mx-auto px-4 mt-8">
-        <div id="user-profile" class="hidden mb-12 p-8 rounded-2xl bg-slate-800/50 border border-slate-700 flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
-            <div class="relative">
-                <img id="user-avatar" src="" alt="Avatar" class="w-24 h-24 rounded-full border-4 border-sky-500">
-                <div class="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-4 border-slate-800 rounded-full"></div>
+    <main class="max-w-6xl mx-auto px-4 mt-12">
+        <!-- プロフィールエリア -->
+        <div id="user-profile" class="hidden mb-12 p-8 rounded-3xl bg-slate-800/40 border border-slate-700/50 backdrop-blur-sm flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-10">
+            <div class="relative group">
+                <div class="absolute -inset-1 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000"></div>
+                <img id="user-avatar" src="" alt="Avatar" class="relative w-28 h-28 rounded-full border-4 border-slate-900 object-cover">
+                <div class="absolute bottom-2 right-2 w-7 h-7 bg-green-500 border-4 border-slate-900 rounded-full shadow-lg"></div>
             </div>
             <div class="flex-1 text-center md:text-left">
-                <h2 id="user-name" class="text-3xl font-bold mb-1 text-white"></h2>
-                <p class="text-slate-400 mb-4">Discord ID：<span id="user-id" class="text-sky-400 font-mono"></span></p>
+                <div class="flex flex-col md:flex-row md:items-end md:space-x-4 mb-2">
+                    <h2 id="user-name" class="text-4xl font-black text-white">---</h2>
+                    <span id="user-rank" class="text-sky-400 font-bold mb-1">奈落の探索者</span>
+                </div>
+                <p class="text-slate-500 font-mono text-sm mb-6">ID: <span id="user-id">000000000000000000</span></p>
                 <div class="flex flex-wrap justify-center md:justify-start gap-4">
-                    <div class="bg-slate-900 px-4 py-2 rounded-lg border border-slate-700">
-                        <p class="text-xs text-slate-500 uppercase">達成実績</p>
-                        <p class="text-lg font-bold"><span id="completion-count">0</span> / <span id="total-count">0</span></p>
+                    <div class="bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-700 shadow-inner">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">達成済みの試練</p>
+                        <p class="text-2xl font-black text-white"><span id="completion-count">0</span><span class="text-slate-600 text-sm mx-1">/</span><span id="total-count" class="text-slate-400">0</span></p>
+                    </div>
+                    <div class="bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-700 shadow-inner">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">達成率</p>
+                        <p id="completion-percent" class="text-2xl font-black text-sky-400">0%</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="achievements-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- JavaScriptで実績を生成 -->
+        <!-- フィルタとタイトル -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <div>
+                <h3 class="text-2xl font-black text-white flex items-center">
+                    <span class="w-2 h-8 bg-sky-500 rounded-full mr-4"></span>
+                    実績アーカイブ
+                </h3>
+                <p class="text-slate-500 text-sm mt-1 ml-6">奈落での活動はすべて記録されています。</p>
+            </div>
+            <div class="flex bg-slate-800/50 p-1 rounded-xl border border-slate-700">
+                <button id="filter-all" class="filter-btn active bg-sky-500 text-white px-5 py-2 rounded-lg text-sm font-bold transition">すべて</button>
+                <button id="filter-unlocked" class="filter-btn px-5 py-2 rounded-lg text-sm font-bold transition text-slate-400 hover:text-white">獲得済み</button>
+            </div>
+        </div>
+
+        <!-- 実績グリッド -->
+        <div id="achievements-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- JavaScriptで動的生成 -->
         </div>
     </main>
 
     <!-- ログインモーダル -->
-    <div id="login-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] px-4">
-        <div class="bg-slate-900 p-8 rounded-2xl border border-slate-800 max-w-md w-full text-center">
-            <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-lock text-3xl text-sky-400"></i>
+    <div id="login-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-[100] px-4">
+        <div class="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 max-w-md w-full text-center shadow-2xl">
+            <div class="relative w-24 h-24 bg-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-8 transform rotate-12">
+                <i class="fas fa-lock text-4xl text-sky-400 transform -rotate-12"></i>
+                <div class="absolute -top-2 -right-2 w-6 h-6 bg-sky-500 rounded-full animate-ping"></div>
             </div>
-            <h2 class="text-2xl font-bold mb-4">実績を同期しよう</h2>
-            <p class="text-slate-400 mb-8">奈落鯖での活動を反映するには、Discordとの連携が必要です。</p>
-            <button id="modal-login-btn" class="w-full discord-gradient py-4 rounded-xl font-bold text-lg flex items-center justify-center space-x-3 hover:scale-[1.02] transition active:scale-95">
+            <h2 class="text-3xl font-black mb-4 text-white">深淵へようこそ</h2>
+            <p class="text-slate-400 mb-10 leading-relaxed text-sm">奈落鯖での実績をリアルタイムで同期するには、Discordアカウントの認可が必要です。</p>
+            <button id="modal-login-btn" class="w-full discord-gradient py-5 rounded-2xl font-black text-lg flex items-center justify-center space-x-4 hover:scale-[1.03] transition-all shadow-xl active:scale-95">
                 <i class="fab fa-discord text-2xl"></i>
                 <span>Discordで今すぐ連携</span>
             </button>
         </div>
     </div>
+
+    <!-- 通知トースト用コンテナ -->
+    <div id="toast-container"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -129,10 +179,10 @@
         // ==========================================
         const CLIENT_ID = '1500128602749141052';
         const REDIRECT_URI = window.location.origin + window.location.pathname;
-        const appId = 'naraku-achievements';
+        window.appId = 'naraku-achievements';
 
-        // Firebase初期化
-        let db, auth;
+        // Firebase初期化（安全に実行）
+        let db = null, auth = null;
         const initFirebase = async () => {
             try {
                 const configToUse = typeof __firebase_config !== 'undefined' 
@@ -152,63 +202,118 @@
             return false;
         };
 
-        const achievementDataMaster = [
-            { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
-            { id: "talker", title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000 },
-            { id: "nightowl", title: "夜更かし", desc: "午前3時にメッセージを送信する", icon: "fa-moon", color: "text-yellow-200", requirement: 1 },
-            { id: "reaction", title: "リアクション王", desc: "合計500個のリアクションを付ける", icon: "fa-grin-squint", color: "text-pink-400", requirement: 500 },
-            { id: "info", title: "情報の運び屋", desc: "役立つリンクを10回以上シェアする", icon: "fa-link", color: "text-cyan-400", requirement: 10 }
+        // 実績マスターデータ (フルバージョン)
+        let achievementData = [
+            { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1, current: 0 },
+            { id: "talker", title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000, current: 0 },
+            { id: "regular", title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 0 },
+            { id: "nightowl", title: "夜更かし", desc: "午前3時にメッセージを送信する", icon: "fa-moon", color: "text-yellow-200", requirement: 1, current: 0 },
+            { id: "reaction", title: "リアクション王", desc: "他人の投稿に合計500個のリアクションを付ける", icon: "fa-grin-squint", color: "text-pink-400", requirement: 500, current: 0 },
+            { id: "staff", title: "奈落の守護者", desc: "管理スタッフとしてサーバーに貢献する", icon: "fa-shield-halved", color: "text-red-400", requirement: 1, current: 0 },
+            { id: "host", title: "イベント主催者", desc: "VCでイベントを1回以上開催する", icon: "fa-trophy", color: "text-yellow-500", requirement: 1, current: 0 },
+            { id: "info", title: "情報の運び屋", desc: "役立つリンクを10回以上シェアする", icon: "fa-link", color: "text-cyan-400", requirement: 10, current: 0 },
+            { id: "secret", title: "深淵を覗く者", desc: "秘密のチャンネルを発見する", icon: "fa-eye", color: "text-indigo-500", requirement: 1, current: 0 }
         ];
 
-        let currentStats = {};
+        let currentFilter = 'all';
 
-        const render = () => {
+        // ユーティリティ: トースト表示
+        function showToast(title) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'mb-4 bg-slate-900 border border-sky-500 p-4 rounded-2xl shadow-2xl flex items-center space-x-4 animate-bounce';
+            toast.innerHTML = `
+                <div class="bg-sky-500 p-2 rounded-lg text-white">
+                    <i class="fas fa-award"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-sky-400 font-bold uppercase">実績を解除しました！</p>
+                    <p class="text-white font-bold">${title}</p>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        // 描画ロジック
+        const renderAchievements = () => {
             const grid = document.getElementById('achievements-grid');
             if(!grid) return;
             grid.innerHTML = '';
-            let unlockedCount = 0;
+            
+            const processed = achievementData.map(a => ({
+                ...a,
+                isUnlocked: a.current >= a.requirement && a.requirement > 0
+            }));
 
-            achievementDataMaster.forEach(ach => {
-                const current = currentStats[ach.id] || 0;
-                const isUnlocked = current >= ach.requirement;
-                if (isUnlocked) unlockedCount++;
-                const progress = Math.min(100, (current / ach.requirement) * 100);
-                
+            const filtered = processed.filter(a => currentFilter === 'unlocked' ? a.isUnlocked : true);
+            const unlockedCount = processed.filter(a => a.isUnlocked).length;
+
+            filtered.forEach(ach => {
+                const progressPercent = Math.min(100, (ach.current / ach.requirement) * 100);
                 const card = document.createElement('div');
-                card.className = `achievement-card p-6 rounded-xl flex flex-col h-full ${!isUnlocked ? 'locked' : ''}`;
+                card.className = `achievement-card p-8 rounded-[2rem] flex flex-col h-full ${!ach.isUnlocked ? 'locked' : ''}`;
                 card.innerHTML = `
-                    <div class="flex justify-between mb-4">
-                        <i class="fas ${ach.icon} ${ach.color} text-2xl"></i>
-                        ${isUnlocked ? '<span class="text-sky-400 text-xs font-bold uppercase">Unlocked</span>' : '<i class="fas fa-lock text-slate-600"></i>'}
-                    </div>
-                    <h4 class="font-bold text-lg text-white mb-2">${ach.title}</h4>
-                    <p class="text-sm text-slate-400 mb-6 flex-grow">${ach.desc}</p>
-                    <div class="mt-auto">
-                        <div class="flex justify-between text-xs text-slate-500 mb-1">
-                            <span>Progress</span>
-                            <span>${current} / ${ach.requirement}</span>
+                    <div class="flex items-start justify-between mb-6">
+                        <div class="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-700 shadow-inner">
+                            <i class="fas ${ach.icon} ${ach.color} text-3xl"></i>
                         </div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: ${progress}%"></div></div>
+                        ${ach.isUnlocked ? '<span class="bg-sky-500/10 text-sky-400 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-tighter border border-sky-500/20">Archived</span>' : '<i class="fas fa-lock text-slate-700"></i>'}
+                    </div>
+                    <h4 class="font-black text-xl mb-2 text-white tracking-tight">${ach.title}</h4>
+                    <p class="text-sm text-slate-500 mb-8 leading-relaxed flex-grow">${ach.desc}</p>
+                    <div class="mt-auto space-y-3">
+                        <div class="flex justify-between items-end">
+                            <span class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Progress</span>
+                            <span class="text-sm font-bold ${ach.isUnlocked ? 'text-sky-400' : 'text-slate-400'}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
+                        </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                     </div>
                 `;
                 grid.appendChild(card);
             });
 
-            const countEl = document.getElementById('completion-count');
-            const totalEl = document.getElementById('total-count');
-            if (countEl) countEl.innerText = unlockedCount;
-            if (totalEl) totalEl.innerText = achievementDataMaster.length;
+            document.getElementById('completion-count').innerText = unlockedCount;
+            document.getElementById('total-count').innerText = achievementData.length;
+            document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementData.length) * 100)}%`;
         };
 
+        // Discord認証へ
         const login = () => {
-            const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`;
+            const scope = encodeURIComponent('identify');
+            const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=${scope}`;
             window.location.href = url;
         };
 
-        const init = async () => {
+        // イベントリスナーの登録
+        const setupEventListeners = () => {
             document.getElementById('nav-login-btn')?.addEventListener('click', login);
             document.getElementById('modal-login-btn')?.addEventListener('click', login);
+            
+            document.getElementById('filter-all')?.addEventListener('click', (e) => {
+                currentFilter = 'all';
+                updateFilterUI(e.currentTarget);
+                renderAchievements();
+            });
+            document.getElementById('filter-unlocked')?.addEventListener('click', (e) => {
+                currentFilter = 'unlocked';
+                updateFilterUI(e.currentTarget);
+                renderAchievements();
+            });
+        };
 
+        const updateFilterUI = (activeBtn) => {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-sky-500', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+            activeBtn.classList.add('active', 'bg-sky-500', 'text-white');
+            activeBtn.classList.remove('text-slate-400');
+        };
+
+        // 初期化処理
+        const init = async () => {
+            setupEventListeners();
             const isFirebaseReady = await initFirebase();
 
             const params = new URLSearchParams(window.location.hash.slice(1));
@@ -225,25 +330,53 @@
                         document.getElementById('user-profile').classList.remove('hidden');
                         document.getElementById('user-name').innerText = user.global_name || user.username;
                         document.getElementById('user-id').innerText = user.id;
-                        document.getElementById('user-avatar').src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
                         
+                        const avatarUrl = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/0.png`;
+                        document.getElementById('user-avatar').src = avatarUrl;
+                        
+                        document.getElementById('auth-section').innerHTML = `
+                            <div class="flex items-center space-x-3 bg-slate-800/80 p-1.5 pr-5 rounded-full border border-slate-700 shadow-xl">
+                                <img src="${avatarUrl}" class="w-9 h-9 rounded-full ring-2 ring-sky-500/20">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-xs leading-none">${user.username}</span>
+                                    <span class="text-[9px] text-sky-500 font-bold uppercase tracking-tighter">Verified User</span>
+                                </div>
+                                <button id="logout-btn" class="text-slate-500 hover:text-red-400 transition ml-2"><i class="fas fa-power-off"></i></button>
+                            </div>
+                        `;
+                        
+                        document.getElementById('logout-btn')?.addEventListener('click', () => {
+                            window.location.hash = '';
+                            window.location.href = REDIRECT_URI;
+                        });
+
                         window.history.replaceState(null, null, REDIRECT_URI);
 
                         if (isFirebaseReady && db) {
-                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'userStats', user.id);
-                            onSnapshot(docRef, (snapshot) => {
+                            const statsDoc = doc(db, 'artifacts', window.appId, 'public', 'data', 'userStats', user.id);
+                            onSnapshot(statsDoc, (snapshot) => {
                                 if (snapshot.exists()) {
-                                    currentStats = snapshot.data();
-                                    render();
+                                    const data = snapshot.data();
+                                    achievementData = achievementData.map(ach => {
+                                        const newVal = data[ach.id] !== undefined ? data[ach.id] : 0;
+                                        // 新規達成ならトースト表示
+                                        if (newVal >= ach.requirement && ach.current < ach.requirement) {
+                                            showToast(ach.title);
+                                        }
+                                        return { ...ach, current: newVal };
+                                    });
+                                } else {
+                                    achievementData = achievementData.map(ach => ({ ...ach, current: 0 }));
                                 }
+                                renderAchievements();
                             });
                         }
                     }
                 } catch (e) {
-                    console.error("Discordユーザー情報取得失敗:", e);
+                    console.error("Discord情報取得失敗:", e);
                 }
             }
-            render();
+            renderAchievements();
         };
 
         init();
