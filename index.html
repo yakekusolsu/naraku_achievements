@@ -281,6 +281,7 @@
 
         let db = null;
         let currentUser = null;
+        let userStatsMap = {}; // Current values from Firestore
 
         // --- 手動で設定した75個の実績データ ---
         const achievementDataMaster = [
@@ -418,7 +419,7 @@
                             <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
-                        <button class="update-btn" data-id="${ach.id}" data-current="${ach.current}" data-req="${ach.requirement}">
+                        <button class="update-btn" data-id="${ach.id}">
                             <i class="fas fa-plus mr-1"></i> Add 1
                         </button>
                     </div>
@@ -426,10 +427,9 @@
                 
                 card.querySelector('.update-btn').addEventListener('click', (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
-                    const current = parseInt(e.currentTarget.getAttribute('data-current'));
-                    const req = parseInt(e.currentTarget.getAttribute('data-req'));
-                    // 達成済みでなければ1足す、またはおしゃべり系など継続的なものは常に足せるように
-                    updateStatInFirestore(id, current + 1);
+                    // Use the centralized userStatsMap to ensure we are adding to the latest value
+                    const currentVal = userStatsMap[id] || 0;
+                    updateStatInFirestore(id, currentVal + 1);
                 });
 
                 grid.appendChild(card);
@@ -477,9 +477,13 @@
                     onSnapshot(statsDoc, (snapshot) => {
                         if (snapshot.exists()) {
                             const data = snapshot.data();
+                            userStatsMap = data; // Update global map
                             achievementData = achievementData.map(ach => {
                                 const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
-                                if (newVal >= ach.requirement && ach.current < ach.requirement) showToast(ach.title);
+                                // Only show toast if it's a new achievement unlocked in this session
+                                if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) {
+                                    showToast(ach.title);
+                                }
                                 return { ...ach, current: newVal };
                             });
                             renderAchievements();
