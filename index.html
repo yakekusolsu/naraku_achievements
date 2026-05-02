@@ -126,22 +126,19 @@
     <div id="toast-container"></div>
 
     <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
-      // TODO: Add SDKs for Firebase products that you want to use
-      // https://firebase.google.com/docs/web/setup#available-libraries
-    
-      // Your web app's Firebase configuration
-      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // ✅ あなたのFirebase Configに更新しました
         const firebaseConfig = {
-          apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
-          authDomain: "naraku-archievements.firebaseapp.com",
-          projectId: "naraku-archievements",
-          storageBucket: "naraku-archievements.firebasestorage.app",
-          messagingSenderId: "1077300098321",
-          appId: "1:1077300098321:web:3c4538e4387c09750948b0",
-          measurementId: "G-NV3MT8D2VV"
+            apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
+            authDomain: "naraku-archievements.firebaseapp.com",
+            projectId: "naraku-archievements",
+            storageBucket: "naraku-archievements.firebasestorage.app",
+            messagingSenderId: "1077300098321",
+            appId: "1:1077300098321:web:3c4538e4387c09750948b0",
+            measurementId: "G-NV3MT8D2VV"
         };
 
         const CLIENT_ID = '1500128602749141052';
@@ -151,9 +148,37 @@
         let db = null;
         let currentUser = null;
         let achievementData = [
+            // 基本
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1, current: 0 },
             { id: "talker", title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000, current: 0 },
-            { id: "regular", title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 0 }
+            { id: "regular", title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 0 },
+            
+            // 活動
+            { id: "reaction", title: "リアクション魔", desc: "合計500回リアクションを付ける", icon: "fa-face-grin-stars", color: "text-pink-400", requirement: 500, current: 0 },
+            { id: "nightowl", title: "夜更かしの王", desc: "深夜2時以降に30回発言する", icon: "fa-moon", color: "text-indigo-300", requirement: 30, current: 0 },
+            { id: "morning", title: "早起きの三文得", desc: "早朝6時台に10回発言する", icon: "fa-sun", color: "text-orange-400", requirement: 10, current: 0 },
+            
+            // コミュニティ
+            { id: "vc_lover", title: "聞き上手", desc: "ボイスチャンネルに合計50時間滞在する", icon: "fa-headset", color: "text-sky-400", requirement: 50, current: 0 },
+            { id: "image_post", title: "写真家", desc: "画像を合計50枚アップロードする", icon: "fa-camera", color: "text-emerald-400", requirement: 50, current: 0 },
+            { id: "link_share", title: "情報の運び屋", desc: "URLを20回シェアする", icon: "fa-link", color: "text-cyan-400", requirement: 20, current: 0 },
+            
+            // 特殊
+            { id: "mention_god", title: "メンション職人", desc: "メンションを100回送る", icon: "fa-at", color: "text-red-400", requirement: 100, current: 0 },
+            { id: "long_text", title: "語り部", desc: "1000文字以上の長文を1回以上送信する", icon: "fa-feather-pointed", color: "text-amber-200", requirement: 1, current: 0 },
+            { id: "bump", title: "広報担当", desc: "サーバー宣伝コマンドを20回実行する", icon: "fa-bullhorn", color: "text-yellow-400", requirement: 20, current: 0 },
+            
+            // サーバー貢献
+            { id: "inviter", title: "人脈の主", desc: "友達を3人サーバーに招待する", icon: "fa-user-plus", color: "text-blue-500", requirement: 3, current: 0 },
+            { id: "booster", title: "サーバーの光", desc: "Nitroブーストを1回以上行う", icon: "fa-rocket", color: "text-fuchsia-400", requirement: 1, current: 0 },
+            { id: "bug_finder", title: "不具合探偵", desc: "バグ報告を1回以上行う", icon: "fa-bug", color: "text-lime-400", requirement: 1, current: 0 },
+            
+            // 称号・熟練
+            { id: "deep_abyss", title: "深淵の主", desc: "合計メッセージ数が10,000を超える", icon: "fa-crown", color: "text-yellow-500", requirement: 10000, current: 0 },
+            { id: "one_year", title: "奈落の主住民", desc: "サーバー参加から1年が経過する", icon: "fa-clock", color: "text-slate-400", requirement: 365, current: 0 },
+            { id: "commander", title: "コマンドマスター", desc: "Botコマンドを500回使用する", icon: "fa-terminal", color: "text-gray-300", requirement: 500, current: 0 },
+            { id: "supporter", title: "良き相談役", desc: "ヘルプチャンネルで3回回答する", icon: "fa-hands-helping", color: "text-rose-400", requirement: 3, current: 0 },
+            { id: "legend", title: "奈落の伝説", desc: "すべての基本実績を解除する", icon: "fa-gem", color: "text-violet-500", requirement: 1, current: 0 }
         ];
 
         // 🟢 リアルタイムでFirestoreを更新する関数
@@ -161,7 +186,6 @@
             if (!db || !currentUser) return;
             const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUser.id);
             try {
-                // merge: true で、他の数値を消さずに特定の項目だけ更新
                 await setDoc(docRef, { [statId]: newValue }, { merge: true });
                 console.log(`Updated ${statId} to ${newValue}`);
             } catch (e) {
@@ -200,7 +224,7 @@
                     <p class="text-sm text-slate-500 mb-8 flex-grow">${ach.desc}</p>
                     <div class="mt-auto space-y-3">
                         <div class="flex justify-between items-end">
-                            <span class="text-sm font-bold text-slate-400">${ach.current} / ${ach.requirement}</span>
+                            <span class="text-sm font-bold text-slate-400">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                         <button class="update-btn" data-id="${ach.id}" data-current="${ach.current}">
@@ -209,11 +233,10 @@
                     </div>
                 `;
                 
-                // ボタンにクリックイベントを追加
                 card.querySelector('.update-btn').addEventListener('click', (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     const current = parseInt(e.currentTarget.getAttribute('data-current'));
-                    updateStatInFirestore(id, current + 1); // Firestoreの数値を+1する
+                    updateStatInFirestore(id, current + 1);
                 });
 
                 grid.appendChild(card);
@@ -231,6 +254,7 @@
             document.getElementById('modal-login-btn').onclick = document.getElementById('nav-login-btn').onclick;
 
             try {
+                // ✅ 環境変数か、直接定義したfirebaseConfigを使用
                 const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
                 const app = initializeApp(config);
                 db = getFirestore(app);
@@ -262,6 +286,8 @@
                             });
                             renderAchievements();
                         }
+                    }, (error) => {
+                        console.error("Firestore Listen Error:", error);
                     });
                 }
             }
