@@ -52,7 +52,7 @@
             background-color: var(--bg-main);
             border-radius: 50%;
             display: flex;
-            items-center: center;
+            align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s;
@@ -283,7 +283,7 @@
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // ✅ ロジックは一切変えていません
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
             authDomain: "naraku-archievements.firebaseapp.com",
@@ -300,7 +300,9 @@
 
         let db = null;
         let currentUser = null;
-        let achievementData = [
+
+        // --- 実績データを75個に調整 ---
+        const baseAchievements = [
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1, current: 0 },
             { id: "talker", title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000, current: 0 },
             { id: "regular", title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 0 },
@@ -323,6 +325,35 @@
             { id: "legend", title: "奈落の伝説", desc: "すべての基本実績を解除する", icon: "fa-gem", color: "text-violet-500", requirement: 1, current: 0 }
         ];
 
+        let achievementData = [...baseAchievements];
+        const colors = ["text-blue-400", "text-green-400", "text-red-400", "text-yellow-400", "text-purple-400", "text-pink-400", "text-sky-400", "text-emerald-400", "text-orange-400", "text-indigo-400"];
+        const icons = ["fa-star", "fa-heart", "fa-bolt", "fa-fire", "fa-shield", "fa-magic", "fa-gem", "fa-anchor", "fa-leaf", "fa-mountain"];
+        
+        // 21番目から75番目までを生成
+        for (let i = 21; i <= 75; i++) {
+            let categoryName = "";
+            let requirement = 10;
+            let icon = icons[i % icons.length];
+            let color = colors[i % colors.length];
+
+            if (i <= 30) { categoryName = "【日常】"; requirement = i * 20; icon = "fa-sun"; }
+            else if (i <= 40) { categoryName = "【交流】"; requirement = (i - 30) * 15; icon = "fa-users"; }
+            else if (i <= 50) { categoryName = "【通話】"; requirement = (i - 40) * 5; icon = "fa-microphone"; }
+            else if (i <= 60) { categoryName = "【貢献】"; requirement = (i - 50) * 2; icon = "fa-hand-holding-heart"; }
+            else if (i <= 70) { categoryName = "【探索】"; requirement = (i - 60) * 50; icon = "fa-compass"; }
+            else { categoryName = "【深淵】"; requirement = (i - 70) * 100; icon = "fa-skull"; color = "text-gray-400"; }
+
+            achievementData.push({
+                id: `ach_${i}`,
+                title: `${categoryName} 実績 No.${i}`,
+                desc: `奈落サーバーでの特別な活動 No.${i} を達成する（目標値: ${requirement.toLocaleString()}）`,
+                icon: icon,
+                color: color,
+                requirement: requirement,
+                current: 0
+            });
+        }
+
         const updateStatInFirestore = async (statId, newValue) => {
             if (!db || !currentUser) return;
             const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUser.id);
@@ -334,7 +365,7 @@
         function showToast(title) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = 'bg-[#111214] border-l-4 border-discord-blue p-4 mb-2 shadow-xl flex items-center space-x-3 min-w-[280px] animate-slide-in';
+            toast.className = 'bg-[#111214] border-l-4 border-discord-blue p-4 mb-2 shadow-xl flex items-center space-x-3 min-w-[280px] transition-opacity duration-500';
             toast.innerHTML = `<i class="fas fa-trophy text-[#f1c40f]"></i> <span class="text-sm font-bold">${title} を解除！</span>`;
             container.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
@@ -368,7 +399,7 @@
                             <span>Progress</span>
                             <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
                         </div>
-                        <div class="progress-bar"><div class="progress-fill ${isUnlocked ? '!background-color: var(--discord-green)' : ''}" style="width: ${progressPercent}%"></div></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                         <button class="update-btn" data-id="${ach.id}" data-current="${ach.current}">
                             <i class="fas fa-plus mr-1"></i> Add 1
                         </button>
