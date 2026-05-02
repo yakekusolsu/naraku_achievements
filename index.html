@@ -28,14 +28,12 @@
             overflow: hidden;
         }
 
-        /* Discord Layout Structure */
         .app-container {
             display: flex;
             height: 100vh;
             width: 100vw;
         }
 
-        /* Server Sidebar (Icon bar) */
         .server-sidebar {
             width: 72px;
             background-color: var(--bg-deep);
@@ -80,7 +78,6 @@
             border-radius: 0 4px 4px 0;
         }
 
-        /* Channel Sidebar */
         .channel-sidebar {
             width: 240px;
             background-color: var(--bg-sidebar);
@@ -89,7 +86,6 @@
             border-top-left-radius: 8px;
         }
 
-        /* Main Chat View */
         .main-content {
             flex: 1;
             background-color: var(--bg-main);
@@ -98,7 +94,6 @@
             overflow-y: auto;
         }
 
-        /* Custom Scrollbar */
         .main-content::-webkit-scrollbar { width: 16px; }
         .main-content::-webkit-scrollbar-track { background: var(--bg-main); }
         .main-content::-webkit-scrollbar-thumb { 
@@ -158,17 +153,11 @@
         .update-btn:hover {
             background: #6d6f78;
         }
-
-        .badge-unlocked {
-            color: #f1c40f;
-            text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
-        }
     </style>
 </head>
 <body>
 
     <div class="app-container">
-        <!-- Server Sidebar -->
         <aside class="server-sidebar">
             <div class="server-icon active">
                 <i class="fas fa-ghost text-xl"></i>
@@ -179,7 +168,6 @@
             </div>
         </aside>
 
-        <!-- Channel Sidebar -->
         <aside class="channel-sidebar">
             <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm">
                 <span class="font-bold text-white overflow-hidden text-ellipsis whitespace-nowrap">奈落サーバー</span>
@@ -198,7 +186,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Current User Profile in Sidebar -->
             <div id="sidebar-user-info" class="bg-[#232428] p-1.5 h-14 flex items-center space-x-2">
                 <div class="relative">
                     <img id="sidebar-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" class="w-8 h-8 rounded-full">
@@ -216,9 +203,7 @@
             </div>
         </aside>
 
-        <!-- Main View -->
         <main class="main-content">
-            <!-- Header -->
             <header class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm sticky top-0 bg-bg-main z-10">
                 <i class="fas fa-hashtag text-text-muted mr-2 text-xl"></i>
                 <span class="font-bold text-white">achievements</span>
@@ -235,7 +220,6 @@
             </header>
 
             <div class="p-8">
-                <!-- Banner/Profile -->
                 <div id="user-profile" class="hidden mb-12 bg-bg-sidebar rounded-lg overflow-hidden border border-[#1f2023]">
                     <div class="h-24 bg-discord-blue"></div>
                     <div class="p-6 pt-0 -mt-12 flex flex-col md:flex-row items-end md:items-center space-y-4 md:space-y-0 md:space-x-6">
@@ -256,7 +240,6 @@
                     </div>
                 </div>
 
-                <!-- Grid -->
                 <div id="achievements-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Cards injected here -->
                 </div>
@@ -264,7 +247,6 @@
         </main>
     </div>
 
-    <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[100] px-4">
         <div class="bg-bg-sidebar p-8 rounded shadow-2xl max-w-sm w-full text-center">
             <i class="fab fa-discord text-5xl text-discord-blue mb-4"></i>
@@ -283,7 +265,6 @@
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
             authDomain: "naraku-archievements.firebaseapp.com",
@@ -301,58 +282,95 @@
         let db = null;
         let currentUser = null;
 
-        // --- 実績データを75個に調整 ---
-        const baseAchievements = [
-            { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1, current: 0 },
-            { id: "talker", title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000, current: 0 },
-            { id: "regular", title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 0 },
-            { id: "reaction", title: "リアクション魔", desc: "合計500回リアクションを付ける", icon: "fa-face-grin-stars", color: "text-pink-400", requirement: 500, current: 0 },
-            { id: "nightowl", title: "夜更かしの王", desc: "深夜2時以降に30回発言する", icon: "fa-moon", color: "text-indigo-300", requirement: 30, current: 0 },
-            { id: "morning", title: "早起きの三文得", desc: "早朝6時台に10回発言する", icon: "fa-sun", color: "text-orange-400", requirement: 10, current: 0 },
-            { id: "vc_lover", title: "聞き上手", desc: "ボイスチャンネルに合計50時間滞在する", icon: "fa-headset", color: "text-sky-400", requirement: 50, current: 0 },
-            { id: "image_post", title: "写真家", desc: "画像を合計50枚アップロードする", icon: "fa-camera", color: "text-emerald-400", requirement: 50, current: 0 },
-            { id: "link_share", title: "情報の運び屋", desc: "URLを20回シェアする", icon: "fa-link", color: "text-cyan-400", requirement: 20, current: 0 },
-            { id: "mention_god", title: "メンション職人", desc: "メンションを100回送る", icon: "fa-at", color: "text-red-400", requirement: 100, current: 0 },
-            { id: "long_text", title: "語り部", desc: "1000文字以上の長文を1回以上送信する", icon: "fa-feather-pointed", color: "text-amber-200", requirement: 1, current: 0 },
-            { id: "bump", title: "広報担当", desc: "サーバー宣伝コマンドを20回実行する", icon: "fa-bullhorn", color: "text-yellow-400", requirement: 20, current: 0 },
-            { id: "inviter", title: "人脈の主", desc: "友達を3人サーバーに招待する", icon: "fa-user-plus", color: "text-blue-500", requirement: 3, current: 0 },
-            { id: "booster", title: "サーバーの光", desc: "Nitroブーストを1回以上行う", icon: "fa-rocket", color: "text-fuchsia-400", requirement: 1, current: 0 },
-            { id: "bug_finder", title: "不具合探偵", desc: "バグ報告を1回以上行う", icon: "fa-bug", color: "text-lime-400", requirement: 1, current: 0 },
-            { id: "deep_abyss", title: "深淵の主", desc: "合計メッセージ数が10,000を超える", icon: "fa-crown", color: "text-yellow-500", requirement: 10000, current: 0 },
-            { id: "one_year", title: "奈落の主住民", desc: "サーバー参加から1年が経過する", icon: "fa-clock", color: "text-slate-400", requirement: 365, current: 0 },
-            { id: "commander", title: "コマンドマスター", desc: "Botコマンドを500回使用する", icon: "fa-terminal", color: "text-gray-300", requirement: 500, current: 0 },
-            { id: "supporter", title: "良き相談役", desc: "ヘルプチャンネルで3回回答する", icon: "fa-hands-helping", color: "text-rose-400", requirement: 3, current: 0 },
-            { id: "legend", title: "奈落の伝説", desc: "すべての基本実績を解除する", icon: "fa-gem", color: "text-violet-500", requirement: 1, current: 0 }
+        // --- 手動で設定した75個の実績データ ---
+        const achievementDataMaster = [
+            // カテゴリ：日常 (15個)
+            { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
+            { id: "talker_1", title: "おしゃべり好き Lv.1", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000 },
+            { id: "talker_2", title: "おしゃべり好き Lv.2", desc: "合計5,000メッセージを送信する", icon: "fa-comments", color: "text-green-500", requirement: 5000 },
+            { id: "talker_3", title: "おしゃべり好き Lv.3", desc: "合計10,000メッセージを送信する", icon: "fa-comments", color: "text-emerald-400", requirement: 10000 },
+            { id: "talker_4", title: "おしゃべり好き Lv.4", desc: "合計50,000メッセージを送信する", icon: "fa-comments", color: "text-emerald-500", requirement: 50000 },
+            { id: "talker_5", title: "おしゃべり好き Lv.5", desc: "合計100,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 100000 },
+            { id: "reaction_1", title: "リアクション Lv.1", desc: "合計100回リアクションを付ける", icon: "fa-face-smile", color: "text-pink-300", requirement: 100 },
+            { id: "reaction_2", title: "リアクション Lv.2", desc: "合計500回リアクションを付ける", icon: "fa-face-grin-stars", color: "text-pink-400", requirement: 500 },
+            { id: "reaction_3", title: "リアクション Lv.3", desc: "合計1,000回リアクションを付ける", icon: "fa-fire-pulse", color: "text-pink-500", requirement: 1000 },
+            { id: "nightowl_1", title: "夜更かし Lv.1", desc: "深夜2時以降に10回発言する", icon: "fa-moon", color: "text-indigo-300", requirement: 10 },
+            { id: "nightowl_2", title: "夜更かし Lv.2", desc: "深夜2時以降に50回発言する", icon: "fa-moon", color: "text-indigo-400", requirement: 50 },
+            { id: "nightowl_3", title: "夜の帝王", desc: "深夜2時以降に200回発言する", icon: "fa-ghost", color: "text-indigo-500", requirement: 200 },
+            { id: "morning_1", title: "早起き Lv.1", desc: "早朝6時台に10回発言する", icon: "fa-sun", color: "text-orange-300", requirement: 10 },
+            { id: "morning_2", title: "早起き Lv.2", desc: "早朝6時台に50回発言する", icon: "fa-sun", color: "text-orange-400", requirement: 50 },
+            { id: "morning_3", title: "朝日を拝む者", desc: "早朝6時台に200回発言する", icon: "fa-cloud-sun", color: "text-orange-500", requirement: 200 },
+
+            // カテゴリ：交流 (15個)
+            { id: "mention_1", title: "メンション Lv.1", desc: "メンションを50回送る", icon: "fa-at", color: "text-red-300", requirement: 50 },
+            { id: "mention_2", title: "メンション Lv.2", desc: "メンションを200回送る", icon: "fa-at", color: "text-red-400", requirement: 200 },
+            { id: "mention_3", title: "通知の嵐", desc: "メンションを500回送る", icon: "fa-bullhorn", color: "text-red-500", requirement: 500 },
+            { id: "reply_1", title: "リプライ Lv.1", desc: "返信を50回行う", icon: "fa-reply", color: "text-blue-300", requirement: 50 },
+            { id: "reply_2", title: "リプライ Lv.2", desc: "返信を200回行う", icon: "fa-reply-all", color: "text-blue-400", requirement: 200 },
+            { id: "reply_3", title: "対話の達人", desc: "返信を500回行う", icon: "fa-comments", color: "text-blue-500", requirement: 500 },
+            { id: "image_1", title: "写真家 Lv.1", desc: "画像を10枚アップロードする", icon: "fa-camera", color: "text-emerald-300", requirement: 10 },
+            { id: "image_2", title: "写真家 Lv.2", desc: "画像を50枚アップロードする", icon: "fa-images", color: "text-emerald-400", requirement: 50 },
+            { id: "image_3", title: "プロカメラマン", desc: "画像を200枚アップロードする", icon: "fa-film", color: "text-emerald-500", requirement: 200 },
+            { id: "link_1", title: "情報の運び屋 Lv.1", desc: "URLを10回シェアする", icon: "fa-link", color: "text-cyan-300", requirement: 10 },
+            { id: "link_2", title: "情報の運び屋 Lv.2", desc: "URLを50回シェアする", icon: "fa-globe", color: "text-cyan-400", requirement: 50 },
+            { id: "link_3", title: "情報通", desc: "URLを200回シェアする", icon: "fa-network-wired", color: "text-cyan-500", requirement: 200 },
+            { id: "long_text_1", title: "語り部 Lv.1", desc: "500文字以上の発言を5回行う", icon: "fa-feather", color: "text-amber-300", requirement: 5 },
+            { id: "long_text_2", title: "語り部 Lv.2", desc: "1000文字以上の発言を10回行う", icon: "fa-feather-pointed", color: "text-amber-400", requirement: 10 },
+            { id: "long_text_3", title: "奈落の書記官", desc: "2000文字以上の発言を30回行う", icon: "fa-book", color: "text-amber-500", requirement: 30 },
+
+            // カテゴリ：通話 (15個)
+            { id: "vc_1", title: "聞き上手 Lv.1", desc: "VCに合計10時間滞在する", icon: "fa-headset", color: "text-sky-300", requirement: 10 },
+            { id: "vc_2", title: "聞き上手 Lv.2", desc: "VCに合計50時間滞在する", icon: "fa-headset", color: "text-sky-400", requirement: 50 },
+            { id: "vc_3", title: "聞き上手 Lv.3", desc: "VCに合計100時間滞在する", icon: "fa-headphones", color: "text-sky-500", requirement: 100 },
+            { id: "vc_4", title: "VCの住人", desc: "VCに合計500時間滞在する", icon: "fa-house-user", color: "text-sky-600", requirement: 500 },
+            { id: "vc_5", title: "VCマスター", desc: "VCに合計1000時間滞在する", icon: "fa-microphone-lines", color: "text-sky-700", requirement: 1000 },
+            { id: "stream_1", title: "配信者 Lv.1", desc: "画面共有を5回行う", icon: "fa-desktop", color: "text-purple-300", requirement: 5 },
+            { id: "stream_2", title: "配信者 Lv.2", desc: "画面共有を20回を行う", icon: "fa-display", color: "text-purple-400", requirement: 20 },
+            { id: "stream_3", title: "ストリーマー", desc: "画面共有を100回行う", icon: "fa-video", color: "text-purple-500", requirement: 100 },
+            { id: "camera_1", title: "顔出し Lv.1", desc: "カメラをONにして1時間通話する", icon: "fa-video", color: "text-rose-300", requirement: 1 },
+            { id: "camera_2", title: "顔出し Lv.2", desc: "カメラをONにして10時間通話する", icon: "fa-video", color: "text-rose-400", requirement: 10 },
+            { id: "camera_3", title: "ビデオ通話の達人", desc: "カメラをONにして50時間通話する", icon: "fa-user-video", color: "text-rose-500", requirement: 50 },
+            { id: "vc_entry_1", title: "通話参加 Lv.1", desc: "VCに10回入室する", icon: "fa-door-open", color: "text-slate-300", requirement: 10 },
+            { id: "vc_entry_2", title: "通話参加 Lv.2", desc: "VCに50回入室する", icon: "fa-door-open", color: "text-slate-400", requirement: 50 },
+            { id: "vc_entry_3", title: "神出鬼没", desc: "VCに200回入室する", icon: "fa-bolt-lightning", color: "text-slate-500", requirement: 200 },
+            { id: "vc_marathon", title: "VCマラソン", desc: "一度の入室で12時間以上滞在する", icon: "fa-stopwatch", color: "text-yellow-600", requirement: 1 },
+
+            // カテゴリ：継続 (15個)
+            { id: "regular_1", title: "常連客 Lv.1", desc: "サーバーに参加してから30日が経過する", icon: "fa-calendar-day", color: "text-purple-300", requirement: 30 },
+            { id: "regular_2", title: "常連客 Lv.2", desc: "サーバーに参加してから90日が経過する", icon: "fa-calendar-week", color: "text-purple-400", requirement: 90 },
+            { id: "regular_3", title: "常連客 Lv.3", desc: "サーバーに参加してから180日が経過する", icon: "fa-calendar-check", color: "text-purple-500", requirement: 180 },
+            { id: "one_year", title: "奈落の一周忌", desc: "サーバー参加から1年(365日)が経過する", icon: "fa-cake-candles", color: "text-yellow-500", requirement: 365 },
+            { id: "two_years", title: "奈落の古参兵", desc: "サーバー参加から2年(730日)が経過する", icon: "fa-medal", color: "text-yellow-600", requirement: 730 },
+            { id: "streak_1", title: "ログイン継続 Lv.1", desc: "7日間連続で発言する", icon: "fa-fire", color: "text-orange-300", requirement: 7 },
+            { id: "streak_2", title: "ログイン継続 Lv.2", desc: "30日間連続で発言する", icon: "fa-fire", color: "text-orange-400", requirement: 30 },
+            { id: "streak_3", title: "不滅のログイン", desc: "100日間連続で発言する", icon: "fa-fire-flame-curved", color: "text-orange-500", requirement: 100 },
+            { id: "daily_1", title: "デイリー Lv.1", desc: "累計30日、サーバーに現れる", icon: "fa-check", color: "text-green-300", requirement: 30 },
+            { id: "daily_2", title: "デイリー Lv.2", desc: "累計100日、サーバーに現れる", icon: "fa-square-check", color: "text-green-400", requirement: 100 },
+            { id: "daily_3", title: "累計300日", desc: "累計300日、サーバーに現れる", icon: "fa-calendar-check", color: "text-green-500", requirement: 300 },
+            { id: "early_adopter", title: "初期メンバー", desc: "サーバーIDの初期100人以内に入る", icon: "fa-id-badge", color: "text-blue-600", requirement: 1 },
+            { id: "holiday_user", title: "祝日の皆勤賞", desc: "祝日に合計10回発言する", icon: "fa-flag", color: "text-red-500", requirement: 10 },
+            { id: "weekend_user", title: "週末の主", desc: "土日に合計50回発言する", icon: "fa-couch", color: "text-indigo-400", requirement: 50 },
+            { id: "loyal_user", title: "忠誠の証", desc: "Nitroブーストを累計3ヶ月継続する", icon: "fa-gem", color: "text-pink-600", requirement: 3 },
+
+            // カテゴリ：特殊・貢献 (15個)
+            { id: "bump_1", title: "広報担当 Lv.1", desc: "サーバー宣伝コマンドを10回実行する", icon: "fa-bullhorn", color: "text-yellow-300", requirement: 10 },
+            { id: "bump_2", title: "広報担当 Lv.2", desc: "サーバー宣伝コマンドを50回実行する", icon: "fa-bullhorn", color: "text-yellow-400", requirement: 50 },
+            { id: "bump_3", title: "奈落の宣伝隊長", desc: "サーバー宣伝コマンドを200回実行する", icon: "fa-megaphone", color: "text-yellow-500", requirement: 200 },
+            { id: "inviter_1", title: "人脈の主 Lv.1", desc: "友達を1人招待する", icon: "fa-user-plus", color: "text-blue-300", requirement: 1 },
+            { id: "inviter_2", title: "人脈の主 Lv.2", desc: "友達を5人招待する", icon: "fa-users-plus", color: "text-blue-400", requirement: 5 },
+            { id: "inviter_3", title: "奈落の外交官", desc: "友達を20人招待する", icon: "fa-handshake", color: "text-blue-500", requirement: 20 },
+            { id: "booster", title: "サーバーの光", desc: "Nitroブーストを開始する", icon: "fa-rocket", color: "text-fuchsia-400", requirement: 1 },
+            { id: "bug_finder", title: "不具合探偵", desc: "バグ報告を行い承認される", icon: "fa-bug", color: "text-lime-400", requirement: 1 },
+            { id: "commander_1", title: "コマンド Lv.1", desc: "Botコマンドを100回使用する", icon: "fa-terminal", color: "text-gray-300", requirement: 100 },
+            { id: "commander_2", title: "コマンド Lv.2", desc: "Botコマンドを500回使用する", icon: "fa-terminal", color: "text-gray-400", requirement: 500 },
+            { id: "commander_3", title: "自動化の鬼", desc: "Botコマンドを2000回使用する", icon: "fa-gears", color: "text-gray-500", requirement: 2000 },
+            { id: "supporter", title: "良き相談役", desc: "ヘルプチャンネルで3回回答する", icon: "fa-hands-helping", color: "text-rose-400", requirement: 3 },
+            { id: "event_fan", title: "イベント好き", desc: "公式イベントに3回参加する", icon: "fa-ticket", color: "text-orange-500", requirement: 3 },
+            { id: "deep_abyss", title: "深淵の管理者", desc: "合計メッセージ数が100,000を超える", icon: "fa-skull-crossbones", color: "text-red-700", requirement: 100000 },
+            { id: "legend", title: "奈落の伝説", desc: "合計50個以上の実績を解除する", icon: "fa-gem", color: "text-violet-500", requirement: 50 }
         ];
 
-        let achievementData = [...baseAchievements];
-        const colors = ["text-blue-400", "text-green-400", "text-red-400", "text-yellow-400", "text-purple-400", "text-pink-400", "text-sky-400", "text-emerald-400", "text-orange-400", "text-indigo-400"];
-        const icons = ["fa-star", "fa-heart", "fa-bolt", "fa-fire", "fa-shield", "fa-magic", "fa-gem", "fa-anchor", "fa-leaf", "fa-mountain"];
-        
-        // 21番目から75番目までを生成
-        for (let i = 21; i <= 75; i++) {
-            let categoryName = "";
-            let requirement = 10;
-            let icon = icons[i % icons.length];
-            let color = colors[i % colors.length];
-
-            if (i <= 30) { categoryName = "【日常】"; requirement = i * 20; icon = "fa-sun"; }
-            else if (i <= 40) { categoryName = "【交流】"; requirement = (i - 30) * 15; icon = "fa-users"; }
-            else if (i <= 50) { categoryName = "【通話】"; requirement = (i - 40) * 5; icon = "fa-microphone"; }
-            else if (i <= 60) { categoryName = "【貢献】"; requirement = (i - 50) * 2; icon = "fa-hand-holding-heart"; }
-            else if (i <= 70) { categoryName = "【探索】"; requirement = (i - 60) * 50; icon = "fa-compass"; }
-            else { categoryName = "【深淵】"; requirement = (i - 70) * 100; icon = "fa-skull"; color = "text-gray-400"; }
-
-            achievementData.push({
-                id: `ach_${i}`,
-                title: `${categoryName} 実績 No.${i}`,
-                desc: `奈落サーバーでの特別な活動 No.${i} を達成する（目標値: ${requirement.toLocaleString()}）`,
-                icon: icon,
-                color: color,
-                requirement: requirement,
-                current: 0
-            });
-        }
+        let achievementData = achievementDataMaster.map(a => ({ ...a, current: 0 }));
 
         const updateStatInFirestore = async (statId, newValue) => {
             if (!db || !currentUser) return;
@@ -400,7 +418,7 @@
                             <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
-                        <button class="update-btn" data-id="${ach.id}" data-current="${ach.current}">
+                        <button class="update-btn" data-id="${ach.id}" data-current="${ach.current}" data-req="${ach.requirement}">
                             <i class="fas fa-plus mr-1"></i> Add 1
                         </button>
                     </div>
@@ -409,6 +427,8 @@
                 card.querySelector('.update-btn').addEventListener('click', (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     const current = parseInt(e.currentTarget.getAttribute('data-current'));
+                    const req = parseInt(e.currentTarget.getAttribute('data-req'));
+                    // 達成済みでなければ1足す、またはおしゃべり系など継続的なものは常に足せるように
                     updateStatInFirestore(id, current + 1);
                 });
 
