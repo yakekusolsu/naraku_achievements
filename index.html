@@ -136,16 +136,18 @@
         // GitHub Pages用にURLを動的に取得（クエリやハッシュを除去したもの）
         const REDIRECT_URI = window.location.origin + window.location.pathname;
 
+        // 実績データ定義
+        // unlockedプロパティはレンダリング時にcurrent >= requirementで判定するため削除/無視するようにロジックを修正
         const achievementData = [
-            { id: 1, title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1, current: 1, unlocked: true },
-            { id: 2, title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000, current: 452, unlocked: false },
-            { id: 3, title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 120, unlocked: true },
-            { id: 4, title: "夜更かし", desc: "午前3時にメッセージを送信する", icon: "fa-moon", color: "text-yellow-200", requirement: 1, current: 1, unlocked: true },
-            { id: 5, title: "リアクション王", desc: "他人の投稿に合計500個のリアクションを付ける", icon: "fa-grin-squint", color: "text-pink-400", requirement: 500, current: 128, unlocked: false },
-            { id: 6, title: "奈落の守護者", desc: "管理スタッフとしてサーバーに貢献する", icon: "fa-shield-halved", color: "text-red-400", requirement: 1, current: 0, unlocked: false },
-            { id: 7, title: "イベント主催者", desc: "VCでイベントを1回以上開催する", icon: "fa-trophy", color: "text-yellow-500", requirement: 1, current: 0, unlocked: false },
-            { id: 8, title: "情報の運び屋", desc: "役立つリンクを10回以上シェアする", icon: "fa-link", color: "text-cyan-400", requirement: 10, current: 10, unlocked: true },
-            { id: 9, title: "深淵を覗く者", desc: "秘密のチャンネルを発見する", icon: "fa-eye", color: "text-indigo-500", requirement: 1, current: 0, unlocked: false }
+            { id: 1, title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1, current: 1 },
+            { id: 2, title: "おしゃべり好き", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000, current: 452 },
+            { id: 3, title: "常連客", desc: "サーバーに参加してから3ヶ月が経過する", icon: "fa-calendar-check", color: "text-purple-400", requirement: 90, current: 120 },
+            { id: 4, title: "夜更かし", desc: "午前3時にメッセージを送信する", icon: "fa-moon", color: "text-yellow-200", requirement: 1, current: 1 },
+            { id: 5, title: "リアクション王", desc: "他人の投稿に合計500個のリアクションを付ける", icon: "fa-grin-squint", color: "text-pink-400", requirement: 500, current: 128 },
+            { id: 6, title: "奈落の守護者", desc: "管理スタッフとしてサーバーに貢献する", icon: "fa-shield-halved", color: "text-red-400", requirement: 1, current: 0 },
+            { id: 7, title: "イベント主催者", desc: "VCでイベントを1回以上開催する", icon: "fa-trophy", color: "text-yellow-500", requirement: 1, current: 0 },
+            { id: 8, title: "情報の運び屋", desc: "役立つリンクを10回以上シェアする", icon: "fa-link", color: "text-cyan-400", requirement: 10, current: 10 },
+            { id: 9, title: "深淵を覗く者", desc: "秘密のチャンネルを発見する", icon: "fa-eye", color: "text-indigo-500", requirement: 1, current: 0 }
         ];
 
         function showAlert(msg) {
@@ -186,18 +188,25 @@
         function renderAchievements(filter = 'all') {
             const grid = document.getElementById('achievements-grid');
             grid.innerHTML = '';
-            const filtered = achievementData.filter(a => filter === 'unlocked' ? a.unlocked : true);
+            
+            // 達成判定ロジック：current が requirement 以上なら達成
+            const processedData = achievementData.map(a => ({
+                ...a,
+                isUnlocked: a.current >= a.requirement
+            }));
+
+            const filtered = processedData.filter(a => filter === 'unlocked' ? a.isUnlocked : true);
 
             filtered.forEach(ach => {
                 const progressPercent = Math.min(100, (ach.current / ach.requirement) * 100);
                 const card = document.createElement('div');
-                card.className = `achievement-card p-6 rounded-xl flex flex-col h-full ${!ach.unlocked ? 'locked' : ''}`;
+                card.className = `achievement-card p-6 rounded-xl flex flex-col h-full ${!ach.isUnlocked ? 'locked' : ''}`;
                 card.innerHTML = `
                     <div class="flex items-start justify-between mb-4">
                         <div class="w-12 h-12 rounded-lg bg-slate-900 flex items-center justify-center border border-slate-700">
                             <i class="fas ${ach.icon} ${ach.color} text-2xl"></i>
                         </div>
-                        ${ach.unlocked ? '<span class="bg-sky-500/20 text-sky-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest">Unlocked</span>' : '<i class="fas fa-lock text-slate-600"></i>'}
+                        ${ach.isUnlocked ? '<span class="bg-sky-500/20 text-sky-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest">Unlocked</span>' : '<i class="fas fa-lock text-slate-600"></i>'}
                     </div>
                     <h4 class="font-bold text-lg mb-1 text-white">${ach.title}</h4>
                     <p class="text-sm text-slate-400 mb-6 leading-relaxed flex-grow">${ach.desc}</p>
@@ -211,7 +220,7 @@
                 `;
                 grid.appendChild(card);
             });
-            document.getElementById('completion-count').innerText = achievementData.filter(a => a.unlocked).length;
+            document.getElementById('completion-count').innerText = processedData.filter(a => a.isUnlocked).length;
             document.getElementById('total-count').innerText = achievementData.length;
         }
 
@@ -240,7 +249,6 @@
                             <button onclick="logout()" class="text-slate-500 hover:text-red-400 ml-2"><i class="fas fa-sign-out-alt"></i></button>
                         </div>
                     `;
-                    // トークンを隠す
                     window.history.replaceState(null, null, REDIRECT_URI);
                 }
             }
