@@ -283,7 +283,7 @@
         let currentUser = null;
         let userStatsMap = {}; // Current values from Firestore
 
-        // --- 手動で設定した75個の実績データ ---
+        // --- 手動で設定した実績データ ---
         const achievementDataMaster = [
             // カテゴリ：日常 (15個)
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
@@ -353,7 +353,7 @@
             { id: "weekend_user", title: "週末の主", desc: "土日に合計50回発言する", icon: "fa-couch", color: "text-indigo-400", requirement: 50 },
             { id: "loyal_user", title: "忠誠の証", desc: "Nitroブーストを累計3ヶ月継続する", icon: "fa-gem", color: "text-pink-600", requirement: 3 },
 
-            // カテゴリ：特殊・貢献 (15個)
+            // カテゴリ：特殊・貢献 (15個 + 新規追加分)
             { id: "bump_1", title: "広報担当 Lv.1", desc: "サーバー宣伝コマンドを10回実行する", icon: "fa-bullhorn", color: "text-yellow-300", requirement: 10 },
             { id: "bump_2", title: "広報担当 Lv.2", desc: "サーバー宣伝コマンドを50回実行する", icon: "fa-bullhorn", color: "text-yellow-400", requirement: 50 },
             { id: "bump_3", title: "奈落の宣伝隊長", desc: "サーバー宣伝コマンドを200回実行する", icon: "fa-megaphone", color: "text-yellow-500", requirement: 200 },
@@ -368,7 +368,17 @@
             { id: "supporter", title: "良き相談役", desc: "ヘルプチャンネルで3回回答する", icon: "fa-hands-helping", color: "text-rose-400", requirement: 3 },
             { id: "event_fan", title: "イベント好き", desc: "公式イベントに3回参加する", icon: "fa-ticket", color: "text-orange-500", requirement: 3 },
             { id: "deep_abyss", title: "深淵の管理者", desc: "合計メッセージ数が100,000を超える", icon: "fa-skull-crossbones", color: "text-red-700", requirement: 100000 },
-            { id: "legend", title: "奈落の伝説", desc: "合計50個以上の実績を解除する", icon: "fa-gem", color: "text-violet-500", requirement: 50 }
+            { id: "legend", title: "奈落の伝説", desc: "合計50個以上の実績を解除する", icon: "fa-gem", color: "text-violet-500", requirement: 50 },
+            
+            // --- サーバーブースト関連の追加実績 ---
+            { id: "boost_multi_1", title: "熱烈な支持者", desc: "同時に2つ以上のブーストを維持する", icon: "fa-rocket", color: "text-pink-400", requirement: 2 },
+            { id: "boost_multi_2", title: "奈落の太柱", desc: "同時に5つ以上のブーストを維持する", icon: "fa-rocket", color: "text-pink-500", requirement: 5 },
+            { id: "boost_long_1", title: "継続の星", desc: "累計半年間ブーストを継続する", icon: "fa-star", color: "text-yellow-400", requirement: 6 },
+            { id: "boost_long_2", title: "永遠の守護者", desc: "累計1年間ブーストを継続する", icon: "fa-shield-heart", color: "text-yellow-500", requirement: 12 },
+            { id: "boost_premium_talk", title: "特権階級の余裕", desc: "ブースト期間中に合計10,000メッセージを送信する", icon: "fa-gem", color: "text-cyan-400", requirement: 10000 },
+            { id: "boost_anniversary", title: "祝杯のロケット", desc: "サーバーの記念日にブーストを行う", icon: "fa-wine-glass-empty", color: "text-red-400", requirement: 1 },
+            { id: "boost_speed", title: "光速のブースト", desc: "サーバー参加から24時間以内にブーストを行う", icon: "fa-bolt", color: "text-blue-500", requirement: 1 },
+            { id: "boost_max_level", title: "深淵の極致", desc: "サーバーがレベル3の時にブーストを維持する", icon: "fa-angles-up", color: "text-fuchsia-600", requirement: 1 }
         ];
 
         let achievementData = achievementDataMaster.map(a => ({ ...a, current: 0 }));
@@ -419,18 +429,8 @@
                             <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
-                        <button class="update-btn" data-id="${ach.id}">
-                            <i class="fas fa-plus mr-1"></i> Add 1
-                        </button>
                     </div>
                 `;
-                
-                card.querySelector('.update-btn').addEventListener('click', (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    // Use the centralized userStatsMap to ensure we are adding to the latest value
-                    const currentVal = userStatsMap[id] || 0;
-                    updateStatInFirestore(id, currentVal + 1);
-                });
 
                 grid.appendChild(card);
             });
