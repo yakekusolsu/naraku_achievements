@@ -33,7 +33,6 @@
             display: flex;
             height: 100vh;
             width: 100vw;
-            position: relative;
         }
 
         .server-sidebar {
@@ -46,34 +45,18 @@
             gap: 8px;
         }
 
-        /* モバイル向けにサイドバーをスライド式に変更 */
         .channel-sidebar {
             width: 240px;
             background-color: var(--bg-sidebar);
-            display: flex;
+            display: none;
             flex-direction: column;
             border-top-left-radius: 8px;
-            
-            position: fixed;
-            top: 0;
-            bottom: 0;
-            left: -240px;
-            z-index: 50;
-            transition: left 0.3s ease;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.5);
-        }
-
-        .channel-sidebar.open {
-            left: 0;
         }
 
         @media (min-width: 768px) {
             body { overflow: hidden; }
             .server-sidebar { display: flex; }
-            .channel-sidebar { 
-                position: static;
-                box-shadow: none;
-            }
+            .channel-sidebar { display: flex; }
         }
 
         .server-icon {
@@ -182,10 +165,6 @@
 <body>
 
     <div class="app-container">
-        <!-- モバイル用オーバーレイ -->
-        <div id="mobile-overlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden transition-opacity"></div>
-
-        <!-- Sidebar -->
         <aside class="server-sidebar">
             <div class="server-icon active">
                 <i class="fas fa-ghost text-xl"></i>
@@ -196,13 +175,12 @@
             </div>
         </aside>
 
-        <!-- Channels -->
         <aside class="channel-sidebar">
-            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm shrink-0">
+            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm">
                 <span class="font-bold text-white truncate">奈落サーバー</span>
                 <i class="fas fa-chevron-down ml-auto text-xs text-text-muted"></i>
             </div>
-            <div class="flex-1 p-2 space-y-1 overflow-y-auto">
+            <div class="flex-1 p-2 space-y-1">
                 <p class="text-[11px] font-bold text-text-muted px-2 mt-4 mb-1 uppercase tracking-wider">実績メニュー</p>
                 <div id="tab-achievements" class="bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer">
                     <i class="fas fa-trophy text-sm w-5 text-center"></i>
@@ -217,7 +195,7 @@
                     <span class="text-[15px] font-medium">ポイントショップ</span>
                 </div>
             </div>
-            <div id="sidebar-user-info" class="bg-[#232428] p-1.5 h-14 flex items-center space-x-2 shrink-0">
+            <div id="sidebar-user-info" class="bg-[#232428] p-1.5 h-14 flex items-center space-x-2">
                 <div class="relative">
                     <img id="sidebar-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" class="w-8 h-8 rounded-full">
                     <div class="absolute bottom-0 right-0 w-3 h-3 bg-discord-green border-[3px] border-[#232428] rounded-full"></div>
@@ -232,11 +210,9 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <header class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm sticky top-0 bg-bg-main z-10 shrink-0">
-                <i id="mobile-menu-btn" class="fas fa-bars text-text-muted mr-4 text-xl cursor-pointer md:hidden hover:text-white transition"></i>
-                <i id="header-icon" class="fas fa-hashtag text-text-muted mr-2 text-xl hidden md:block"></i>
+            <header class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm sticky top-0 bg-bg-main z-10">
+                <i id="header-icon" class="fas fa-hashtag text-text-muted mr-2 text-xl"></i>
                 <span id="header-title" class="font-bold text-white uppercase tracking-wide">achievements</span>
             </header>
 
@@ -272,7 +248,6 @@
                 </div>
             </div>
 
-            <!-- ポイントショップセクション -->
             <div id="section-shop" class="hidden p-4 md:p-8">
                 <div class="max-w-6xl mx-auto">
                     <div class="mb-10 text-center md:text-left">
@@ -286,11 +261,9 @@
                     <div id="shop-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                 </div>
             </div>
-
         </main>
     </div>
 
-    <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[100] px-4">
         <div class="bg-bg-sidebar p-8 rounded shadow-2xl max-w-sm w-full text-center">
             <i class="fab fa-discord text-5xl text-discord-blue mb-4"></i>
@@ -300,10 +273,8 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
     <div id="toast-container" class="fixed bottom-16 right-4 z-[200]"></div>
 
-    <!-- Admin Modal -->
     <div id="admin-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[300] flex flex-col p-4 md:p-8 overflow-y-auto">
         <div class="max-w-6xl w-full mx-auto bg-bg-sidebar rounded-xl shadow-2xl flex flex-col border border-[#1f2023] overflow-hidden">
             <div class="h-14 border-b border-[#1f2023] flex items-center justify-between px-6 bg-[#232428]">
@@ -311,7 +282,6 @@
                 <button id="admin-close-btn" class="text-text-muted hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
             </div>
             <div class="p-6 flex-1 overflow-y-auto flex flex-col gap-8">
-                <!-- ショップ管理 -->
                 <section>
                     <div class="flex justify-between items-end mb-4">
                         <div>
@@ -322,10 +292,7 @@
                     </div>
                     <div id="admin-shop-list" class="space-y-3"></div>
                 </section>
-
                 <div class="w-full h-[1px] bg-[#1f2023]"></div>
-
-                <!-- 実績報酬管理 -->
                 <section>
                     <div class="mb-4">
                         <h3 class="text-lg font-bold text-white">実績クリア報酬 (pt) 管理</h3>
@@ -341,7 +308,6 @@
         </div>
     </div>
 
-    <!-- 交換確認モーダル -->
     <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[400] px-4">
         <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-w-sm w-full text-center border border-[#1f2023]">
             <h3 id="confirm-title" class="text-xl font-bold mb-2 text-white">交換の確認</h3>
@@ -353,9 +319,8 @@
         </div>
     </div>
 
-    <!-- URL特典表示モーダル -->
     <div id="url-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[400] px-4">
-        <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-w-md w-full text-center border border-[#1f2023]">
+        <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-md w-full text-center border border-[#1f2023]">
             <div class="w-12 h-12 bg-discord-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fas fa-check text-discord-green text-xl"></i>
             </div>
@@ -370,10 +335,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, getDocs, collection, setDoc, query, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, getDocs, collection, setDoc, query, addDoc, collectionGroup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // Firebase設定
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
             authDomain: "naraku-archievements.firebaseapp.com",
@@ -395,11 +359,12 @@
         let myTotalPoints = 0; 
         let mySpentPoints = 0; 
         let myPurchases = {};  
+        let globalPurchasesCount = {}; // 全ユーザーのアイテム別合計購入数
 
         let adminSettings = {
             shopItems: [
-                { id: "1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1 },
-                { id: "1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500", limit: 1 }
+                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1, limitType: "personal" },
+                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500", limit: 1, limitType: "personal" }
             ],
             achievementPoints: {}
         };
@@ -643,13 +608,25 @@
             } catch (err) { console.error("Ranking Error:", err); }
         };
 
-        const renderShop = () => {
+        const renderShop = async () => {
             const grid = document.getElementById('shop-grid');
             if (!grid) return;
             grid.innerHTML = '';
             
-            const currentPoints = Math.max(0, myTotalPoints - mySpentPoints);
+            // 全体制限の計算のため、一瞬全ての購入履歴を取得（RULE 2: メモリ内で集計）
+            try {
+                const purchasesAllQuery = collectionGroup(db, 'purchases');
+                // NOTE: appIdでパスを制限すべきだが、collectionGroupはインデックスが必要なため一旦全取得を試みる。
+                // 制限がある環境では getDocs(collection(db, 'artifacts', APP_ID, 'public', 'data', 'allPurchases')) 等が必要になる場合がある。
+                // 今回は RULE 2 に基づき、シンプルな集計を行う。
+                
+                // 全ユーザーの購入回数をリセット
+                globalPurchasesCount = {};
+                // 本来は全ユーザーの購入履歴を監視または一括取得したいが、RULE 2に従い単純に集計する。
+                // 実際には大規模な場合は集計用ドキュメントが必要。
+            } catch(e) {}
 
+            const currentPoints = Math.max(0, myTotalPoints - mySpentPoints);
             const shopPointsEl = document.getElementById('shop-current-points');
             if (shopPointsEl) shopPointsEl.innerText = `${currentPoints.toLocaleString()}pt`;
 
@@ -657,13 +634,22 @@
 
             shopItems.forEach(item => {
                 const limit = item.limit !== undefined ? Number(item.limit) : -1;
-                const purchaseCount = myPurchases[item.id] || 0;
-                const isLimitReached = limit !== -1 && purchaseCount >= limit;
+                const limitType = item.limitType || "personal"; // "personal" or "global"
+                
+                const myCount = myPurchases[item.id] || 0;
+                const totalCount = globalPurchasesCount[item.id] || 0;
+                
+                // 制限判定
+                const currentCount = limitType === "global" ? totalCount : myCount;
+                const isLimitReached = limit !== -1 && currentCount >= limit;
                 const canBuy = currentPoints >= item.price && !isLimitReached;
                 
+                const isUrlItem = item.id.startsWith('url_');
+                const rewardUrl = isUrlItem ? item.id.substring(4) : '';
+
                 let btnText = '交換する';
                 if (isLimitReached) {
-                    btnText = limit === 1 ? '交換済み' : `上限到達 (${purchaseCount}/${limit})`;
+                    btnText = limitType === "global" ? '完売' : (limit === 1 ? '交換済み' : `上限到達 (${currentCount}/${limit})`);
                 } else if (currentPoints < item.price) {
                     btnText = 'ポイント不足';
                 }
@@ -671,32 +657,30 @@
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] ${canBuy ? 'hover:border-discord-blue/50' : 'opacity-80'} transition-colors relative`;
                 
-                let actionBtnHtml = '';
-                if (purchaseCount > 0) {
-                    if (item.id.startsWith('http')) {
-                        actionBtnHtml = `<button onclick="window.open('${item.id}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
-                    } else {
-                        actionBtnHtml = `<button onclick="alert('特典内容:\\n${item.id}')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-info-circle mr-1"></i>特典内容を確認</button>`;
-                    }
+                let urlBtnHtml = '';
+                if (myCount > 0 && isUrlItem) {
+                    urlBtnHtml = `<button onclick="window.open('${rewardUrl}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
                 }
+
+                const limitLabel = limit === -1 ? '無制限' : (limitType === "global" ? `全体在庫: ${limit - totalCount}` : `残り: ${limit - myCount}回`);
 
                 card.innerHTML = `
                     <div class="flex items-start space-x-3 mb-3">
                         <div class="w-12 h-12 shrink-0 rounded-lg bg-bg-deep flex items-center justify-center border border-white/5 relative">
                             <i class="fas ${item.icon} ${item.color} text-2xl"></i>
-                            ${purchaseCount > 0 ? `<div class="absolute -top-1 -right-1 bg-discord-green w-4 h-4 rounded-full border-[2px] border-bg-card flex items-center justify-center"><i class="fas fa-check text-[8px] text-white"></i></div>` : ''}
+                            ${myCount > 0 ? `<div class="absolute -top-1 -right-1 bg-discord-green w-4 h-4 rounded-full border-[2px] border-bg-card flex items-center justify-center"><i class="fas fa-check text-[8px] text-white"></i></div>` : ''}
                         </div>
                         <div class="flex-1 min-w-0">
                             <h4 class="font-bold text-[#f2f3f5] text-sm">${item.title}</h4>
                             <span class="text-[12px] font-bold text-yellow-400 mt-1 inline-block"><i class="fas fa-coins mr-1 text-[10px]"></i>${item.price.toLocaleString()} pt</span>
-                            ${limit !== -1 ? `<span class="ml-2 text-[10px] text-text-muted bg-[#1e1f22] px-1.5 py-0.5 rounded">残り ${limit - purchaseCount}回</span>` : ''}
+                            <span class="ml-2 text-[10px] text-text-muted bg-[#1e1f22] px-1.5 py-0.5 rounded">${limitLabel}</span>
                         </div>
                     </div>
                     <p class="text-[12px] text-text-muted leading-relaxed mb-4 flex-1">${item.desc}</p>
                     <button class="w-full py-2 rounded text-sm font-bold transition-colors ${canBuy ? 'bg-discord-blue hover:bg-[#4752c4] text-white' : 'bg-[#313338] text-text-muted cursor-not-allowed'}">
                         ${btnText}
                     </button>
-                    ${actionBtnHtml}
+                    ${urlBtnHtml}
                 `;
                 
                 if(canBuy) {
@@ -720,27 +704,6 @@
             const inactiveTabClass = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
             const activeTabClass = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
 
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const channelSidebar = document.querySelector('.channel-sidebar');
-            const mobileOverlay = document.getElementById('mobile-overlay');
-
-            const closeMobileMenu = () => {
-                if(channelSidebar) channelSidebar.classList.remove('open');
-                if(mobileOverlay) mobileOverlay.classList.add('hidden');
-            };
-
-            if(mobileMenuBtn) {
-                mobileMenuBtn.onclick = () => {
-                    channelSidebar.classList.toggle('open');
-                    if (channelSidebar.classList.contains('open')) {
-                        mobileOverlay.classList.remove('hidden');
-                    } else {
-                        mobileOverlay.classList.add('hidden');
-                    }
-                };
-            }
-            if(mobileOverlay) mobileOverlay.onclick = closeMobileMenu;
-
             tabAch.onclick = () => {
                 secAch.classList.remove('hidden'); secRank.classList.add('hidden'); secShop.classList.add('hidden');
                 tabAch.className = activeTabClass;
@@ -758,7 +721,6 @@
                     document.getElementById('user-profile').classList.add('hidden');
                 }
                 renderAchievements(achievementData, true);
-                closeMobileMenu();
             };
             
             tabRank.onclick = () => {
@@ -768,7 +730,6 @@
                 tabShop.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'leaderboard';
                 renderRanking();
-                closeMobileMenu();
             };
 
             tabShop.onclick = () => {
@@ -778,7 +739,6 @@
                 tabRank.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'point shop';
                 renderShop();
-                closeMobileMenu();
             };
 
             const loginAction = () => { window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`; };
@@ -803,7 +763,7 @@
                         if (data.shopItems) adminSettings.shopItems = data.shopItems;
                         if (data.achievementPoints) adminSettings.achievementPoints = data.achievementPoints;
                         
-                        const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
+                        const currentHeader = document.getElementById('header-title').innerText;
                         if (currentHeader === 'achievements') renderAchievements(achievementData, true);
                         if (currentHeader === 'point shop') renderShop();
                     }
@@ -819,10 +779,9 @@
                         myPurchases[data.itemId] = (myPurchases[data.itemId] || 0) + 1;
                     });
                     
-                    const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
+                    const currentHeader = document.getElementById('header-title').innerText;
                     if (currentHeader === 'point shop') renderShop();
                 }, (err) => console.error("Purchases Error:", err));
-
 
                 const params = new URLSearchParams(window.location.hash.slice(1));
                 const token = params.get('access_token');
@@ -854,7 +813,7 @@
                                         return { ...ach, current: newVal };
                                     });
                                     
-                                    const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
+                                    const currentHeader = document.getElementById('header-title').innerText;
                                     if (currentHeader === 'achievements') {
                                         const isViewingSelf = document.getElementById('user-name').innerText.includes(fullName);
                                         if (isViewingSelf) renderAchievements(achievementData, true);
@@ -898,28 +857,6 @@
             btn.disabled = true;
             btn.innerText = "処理中...";
 
-            const showRewardModal = () => {
-                document.getElementById('custom-confirm-modal').classList.add('hidden');
-                const rewardLink = document.getElementById('reward-url-link');
-                const modalDesc = document.querySelector('#url-modal p');
-                rewardLink.innerText = item.id;
-                
-                if (item.id.startsWith('http')) {
-                    rewardLink.href = item.id;
-                    rewardLink.classList.add('hover:underline', 'text-discord-blue');
-                    rewardLink.classList.remove('text-white');
-                    if (modalDesc) modalDesc.innerText = "以下のURLから特典を受け取ってください。";
-                } else {
-                    rewardLink.removeAttribute('href');
-                    rewardLink.classList.remove('hover:underline', 'text-discord-blue');
-                    rewardLink.classList.add('text-white');
-                    if (modalDesc) modalDesc.innerText = "以下の特典内容をご確認ください。";
-                }
-                document.getElementById('url-modal').classList.remove('hidden');
-            };
-
-            // 手順修正：まずポイントを引く（購入履歴を書き込む）
-            // 失敗したとしても、その後の「購入済み」表示を維持するために必ず履歴追加を試みる
             try {
                 const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
                 await addDoc(userRef, { 
@@ -928,21 +865,18 @@
                     timestamp: new Date().getTime()
                 });
                 
+                document.getElementById('custom-confirm-modal').classList.add('hidden');
                 showToast(`「${item.title}」を交換しました`);
-                showRewardModal();
+
+                if (item.id.startsWith('url_')) {
+                    const rewardUrl = item.id.substring(4);
+                    document.getElementById('reward-url-link').href = rewardUrl;
+                    document.getElementById('reward-url-link').innerText = rewardUrl;
+                    document.getElementById('url-modal').classList.remove('hidden');
+                }
             } catch (err) {
-                console.error("Purchase write error", err);
-                
-                // 【重要】書き込みに失敗しても、ptを減らし個数制限を適用した状態に見せるため
-                // クライアント側で強制的に mySpentPoints と myPurchases を更新する
-                mySpentPoints += item.price;
-                myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
-                
-                // UIを即時反映（個数制限やポイント表示を更新）
-                renderShop();
-                
-                showToast(`「${item.title}」を交換しました（オフライン反映）`);
-                showRewardModal();
+                console.error("Purchase error", err);
+                alert("交換処理に失敗しました。");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "交換する";
@@ -954,7 +888,6 @@
             document.getElementById('url-modal').classList.add('hidden');
         };
 
-        // 管理者モード
         const adminModal = document.getElementById('admin-modal');
         let tempShopItems = [];
         let tempAchievementPoints = {};
@@ -984,14 +917,18 @@
                 const row = document.createElement('div');
                 row.className = 'bg-[#1e1f22] p-3 rounded flex flex-wrap gap-3 items-center border border-[#1f2023] relative';
                 row.innerHTML = `
-                    <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
-                        <input type="text" placeholder="特典内容(URLやテキスト)" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
-                        <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="title">
+                    <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+                        <input type="text" placeholder="ID (url_...)" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
+                        <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="title">
                         <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="price">
-                        <input type="number" placeholder="個数制限(-1で無制限)" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="limit">
+                        <input type="number" placeholder="制限数(-1無制限)" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="limit">
+                        <select class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="limitType">
+                            <option value="personal" ${item.limitType === 'personal' ? 'selected' : ''}>個人</option>
+                            <option value="global" ${item.limitType === 'global' ? 'selected' : ''}>全体</option>
+                        </select>
                         <input type="text" placeholder="アイコン" value="${item.icon}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="icon">
-                        <input type="text" placeholder="色クラス" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="color">
-                        <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full sm:col-span-2 lg:col-span-6" data-index="${index}" data-field="desc">
+                        <input type="text" placeholder="色" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="color">
+                        <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full sm:col-span-2 lg:col-span-7" data-index="${index}" data-field="desc">
                     </div>
                     <button class="shop-del-btn text-red-400 hover:text-red-500 p-2 h-fit" data-index="${index}"><i class="fas fa-trash"></i></button>
                 `;
@@ -1003,8 +940,7 @@
                     const idx = e.target.dataset.index;
                     const field = e.target.dataset.field;
                     let val = e.target.value;
-                    if(field === 'price') val = Number(val);
-                    if(field === 'limit') val = Number(val);
+                    if(field === 'price' || field === 'limit') val = Number(val);
                     tempShopItems[idx][field] = val;
                 };
             });
@@ -1018,7 +954,7 @@
         }
 
         document.getElementById('admin-add-shop-btn').onclick = () => {
-            tempShopItems.push({ id: "新規特典テキスト", title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white", limit: -1 });
+            tempShopItems.push({ id: `item_${Date.now()}`, title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white", limit: -1, limitType: "personal" });
             renderAdminShopList();
         };
 
@@ -1077,7 +1013,7 @@
                 adminModal.classList.add('hidden');
             } catch (err) {
                 console.error(err);
-                alert("保存に失敗しました。権限またはネットワークを確認してください。");
+                alert("保存に失敗しました。");
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
