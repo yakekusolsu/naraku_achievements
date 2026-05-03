@@ -192,6 +192,11 @@
                     <i class="fas fa-chart-line text-sm w-5 text-center"></i>
                     <span class="text-[15px] font-medium">ランキング</span>
                 </div>
+                <!-- 新規追加：ポイントショップタブ -->
+                <div id="tab-shop" class="hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition">
+                    <i class="fas fa-store text-sm w-5 text-center"></i>
+                    <span class="text-[15px] font-medium">ポイントショップ</span>
+                </div>
             </div>
             <div id="sidebar-user-info" class="bg-[#232428] p-1.5 h-14 flex items-center space-x-2">
                 <div class="relative">
@@ -246,6 +251,22 @@
                     <div id="ranking-list" class="space-y-3"></div>
                 </div>
             </div>
+
+            <!-- 新規追加：ポイントショップセクション -->
+            <div id="section-shop" class="hidden p-4 md:p-8">
+                <div class="max-w-6xl mx-auto">
+                    <div class="mb-10 text-center md:text-left">
+                        <h2 class="text-3xl font-bold text-white">ポイントショップ</h2>
+                        <p class="text-text-muted mt-1">獲得した実績ポイントを使って特別なアイテムや権利を交換しよう</p>
+                        <div class="mt-4 inline-flex items-center bg-bg-card border border-[#1f2023] rounded-lg px-4 py-2 shadow-sm">
+                            <span class="text-sm font-bold text-text-muted uppercase tracking-wider">所持ポイント:</span>
+                            <span id="shop-current-points" class="ml-3 text-xl font-bold text-yellow-400">0pt</span>
+                        </div>
+                    </div>
+                    <div id="shop-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -282,6 +303,7 @@
 
         let db = null;
         let currentUserData = null;
+        let currentTotalPoints = 0; // 追加：ショップ判定用の現在のポイント
 
         const achievementDataMaster = [
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
@@ -439,24 +461,35 @@
                 grid.appendChild(card);
             });
 
+            currentTotalPoints = totalPoints; // ショップ判定用にも保存
+            
             document.getElementById('total-points').innerText = `${totalPoints.toLocaleString()}pt`;
             document.getElementById('completion-count').innerText = unlockedCount;
             document.getElementById('total-count').innerText = achievementDataMaster.length;
             document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementDataMaster.length) * 100)}%`;
+            
+            // ショップのポイント表示も更新
+            const shopPointsEl = document.getElementById('shop-current-points');
+            if (shopPointsEl) shopPointsEl.innerText = `${totalPoints.toLocaleString()}pt`;
         };
 
         // 他人の実績一覧を表示する関数
         const showUserAchievements = (targetId, targetName, targetAvatar, targetData) => {
             const secAch = document.getElementById('section-achievements');
             const secRank = document.getElementById('section-ranking');
+            const secShop = document.getElementById('section-shop');
             const tabAch = document.getElementById('tab-achievements');
             const tabRank = document.getElementById('tab-ranking');
+            const tabShop = document.getElementById('tab-shop');
 
             // 画面を実績一覧に切り替え
             secAch.classList.remove('hidden'); 
             secRank.classList.add('hidden');
+            secShop.classList.add('hidden');
+            
             tabAch.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
             tabRank.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
+            tabShop.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
             
             document.getElementById('header-title').innerText = `${targetName}'s achievements`;
 
@@ -516,16 +549,70 @@
             } catch (err) { console.error("Ranking Error:", err); }
         };
 
+        // 新規追加：ショップ画面のレンダリング
+        const renderShop = () => {
+            const grid = document.getElementById('shop-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            // ショップアイテムのモックデータ
+            const shopItems = [
+                { id: "role_color", title: "名前の色変更権", desc: "サーバー内での自分の名前の色を好きな色に変更できる権利。", price: 5000, icon: "fa-palette", color: "text-pink-400" },
+                { id: "custom_stamp", title: "カスタムスタンプ追加", desc: "自分の好きな画像をサーバーのスタンプとして1つ追加できる。", price: 10000, icon: "fa-face-laugh-squint", color: "text-yellow-400" },
+                { id: "vc_room", title: "専用VC作成権", desc: "自分専用のボイスチャンネルを作成し、管理権限を持てる。", price: 20000, icon: "fa-microphone", color: "text-blue-400" },
+                { id: "vip_role", title: "VIPロールの付与", desc: "特別なVIPロールを付与され、専用チャンネルへのアクセスが可能に。", price: 50000, icon: "fa-crown", color: "text-yellow-500" },
+                { id: "bot_cmd", title: "Botカスタムコマンド", desc: "自分だけの専用Botコマンドを1つ作成し、サーバーに追加できる。", price: 30000, icon: "fa-robot", color: "text-gray-400" },
+                { id: "ad_ticket", title: "サーバー全体宣伝チケット", desc: "全体メンション(@everyone)付きで自分のプロジェクトなどを1回宣伝できる。", price: 100000, icon: "fa-bullhorn", color: "text-red-500" }
+            ];
+
+            shopItems.forEach(item => {
+                const canBuy = currentTotalPoints >= item.price;
+                const card = document.createElement('div');
+                card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] hover:border-discord-blue/50 transition-colors`;
+                card.innerHTML = `
+                    <div class="flex items-start space-x-3 mb-3">
+                        <div class="w-12 h-12 shrink-0 rounded-lg bg-bg-deep flex items-center justify-center border border-white/5">
+                            <i class="fas ${item.icon} ${item.color} text-2xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-[#f2f3f5] text-sm">${item.title}</h4>
+                            <span class="text-[12px] font-bold text-yellow-400 mt-1 inline-block"><i class="fas fa-coins mr-1 text-[10px]"></i>${item.price.toLocaleString()} pt</span>
+                        </div>
+                    </div>
+                    <p class="text-[12px] text-text-muted leading-relaxed mb-4 flex-1">${item.desc}</p>
+                    <button class="w-full py-2 rounded text-sm font-bold transition-colors ${canBuy ? 'bg-discord-blue hover:bg-[#4752c4] text-white' : 'bg-[#313338] text-text-muted cursor-not-allowed'}">
+                        ${canBuy ? '交換する' : 'ポイント不足'}
+                    </button>
+                `;
+                
+                // 購入ボタンのデモ処理
+                if(canBuy) {
+                    card.querySelector('button').onclick = () => {
+                        alert(`「${item.title}」を交換しようとしました。\n※これはデモ画面です。実際の交換機能は未実装です。`);
+                    };
+                }
+                
+                grid.appendChild(card);
+            });
+        };
+
         const init = async () => {
             const tabAch = document.getElementById('tab-achievements');
             const tabRank = document.getElementById('tab-ranking');
+            const tabShop = document.getElementById('tab-shop');
+            
             const secAch = document.getElementById('section-achievements');
             const secRank = document.getElementById('section-ranking');
+            const secShop = document.getElementById('section-shop');
+
+            const inactiveTabClass = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
+            const activeTabClass = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
 
             tabAch.onclick = () => {
-                secAch.classList.remove('hidden'); secRank.classList.add('hidden');
-                tabAch.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
-                tabRank.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
+                secAch.classList.remove('hidden'); secRank.classList.add('hidden'); secShop.classList.add('hidden');
+                tabAch.className = activeTabClass;
+                tabRank.className = inactiveTabClass;
+                tabShop.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'achievements';
                 
                 // 他人の実績を見ていた場合、自分の実績表示状態にリセットする
@@ -546,11 +633,23 @@
             };
             
             tabRank.onclick = () => {
-                secAch.classList.add('hidden'); secRank.classList.remove('hidden');
-                tabRank.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
-                tabAch.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
+                secAch.classList.add('hidden'); secRank.classList.remove('hidden'); secShop.classList.add('hidden');
+                tabRank.className = activeTabClass;
+                tabAch.className = inactiveTabClass;
+                tabShop.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'leaderboard';
                 renderRanking();
+            };
+
+            // 新規追加：ショップタブのクリックイベント
+            tabShop.onclick = () => {
+                secAch.classList.add('hidden'); secRank.classList.add('hidden'); secShop.classList.remove('hidden');
+                tabShop.className = activeTabClass;
+                tabAch.className = inactiveTabClass;
+                tabRank.className = inactiveTabClass;
+                document.getElementById('header-title').innerText = 'point shop';
+                // 最新のポイント状態でショップを再描画
+                renderShop();
             };
 
             const loginAction = () => { window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`; };
@@ -604,6 +703,10 @@
                                 const currentHeader = document.getElementById('header-title').innerText;
                                 if (currentHeader === 'achievements') {
                                     renderAchievements();
+                                } else if (currentHeader === 'point shop') {
+                                    // 裏でポイントが変わった場合のためにショップも裏更新しておく（表示上は切り替え時に再描画される）
+                                    renderAchievements(); // ポイント再計算のため
+                                    renderShop();
                                 }
                             }
                         });
