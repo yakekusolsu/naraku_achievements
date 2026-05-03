@@ -25,7 +25,6 @@
             background-color: var(--bg-deep);
             color: var(--text-normal);
             margin: 0;
-            /* スマホでのスクロールを許可 */
             overflow-x: hidden;
             overflow-y: auto;
         }
@@ -36,7 +35,6 @@
             width: 100vw;
         }
 
-        /* モバイルではサイドバーを隠す */
         .server-sidebar {
             width: 72px;
             background-color: var(--bg-deep);
@@ -55,7 +53,6 @@
             border-top-left-radius: 8px;
         }
 
-        /* PCサイズ(768px以上)でサイドバーを表示 */
         @media (min-width: 768px) {
             body { overflow: hidden; }
             .server-sidebar { display: flex; }
@@ -86,16 +83,6 @@
             background-color: var(--discord-blue);
         }
 
-        .server-icon.active::before {
-            content: "";
-            position: absolute;
-            left: -12px;
-            width: 8px;
-            height: 40px;
-            background-color: white;
-            border-radius: 0 4px 4px 0;
-        }
-
         .main-content {
             flex: 1;
             background-color: var(--bg-main);
@@ -119,10 +106,6 @@
             padding: 16px;
             border: 1px solid transparent;
             transition: border 0.2s;
-        }
-
-        .achievement-card:hover {
-            border-color: rgba(255, 255, 255, 0.1);
         }
 
         .progress-bar {
@@ -152,25 +135,34 @@
             background-color: #4752c4;
         }
 
-        .update-btn {
-            background: #4e5058;
-            color: white;
-            font-size: 12px;
-            padding: 4px 10px;
-            border-radius: 3px;
-            margin-top: 12px;
+        .ranking-item {
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: transform 0.2s;
         }
 
-        .update-btn:hover {
-            background: #6d6f78;
+        .ranking-item:hover {
+            transform: translateX(4px);
+            background-color: #2b2d31;
         }
 
-        /* ヘッダー検索窓のモバイル調整 */
-        @media (max-width: 640px) {
-            .header-search { display: none; }
-            .user-profile-header { flex-direction: column; align-items: center; text-align: center; }
-            .user-profile-header img { margin-bottom: 1rem; margin-right: 0 !important; }
+        .rank-badge {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border-radius: 50%;
         }
+
+        .rank-1 { background-color: #f1c40f; color: #1e1f22; }
+        .rank-2 { background-color: #bdc3c7; color: #1e1f22; }
+        .rank-3 { background-color: #e67e22; color: #1e1f22; }
     </style>
 </head>
 <body>
@@ -188,17 +180,17 @@
 
         <aside class="channel-sidebar">
             <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm">
-                <span class="font-bold text-white overflow-hidden text-ellipsis whitespace-nowrap">奈落サーバー</span>
+                <span class="font-bold text-white truncate">奈落サーバー</span>
                 <i class="fas fa-chevron-down ml-auto text-xs"></i>
             </div>
             <div class="flex-1 p-2 space-y-4">
                 <div>
                     <p class="text-[11px] font-bold text-text-muted px-2 mb-1 uppercase tracking-wider">実績メニュー</p>
-                    <div class="bg-[#3f4147] text-white px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer">
+                    <div id="tab-achievements" class="bg-[#3f4147] text-white px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer transition">
                         <i class="fas fa-trophy text-sm"></i>
                         <span class="text-[15px] font-medium">実績一覧</span>
                     </div>
-                    <div class="hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer transition">
+                    <div id="tab-ranking" class="hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer transition">
                         <i class="fas fa-chart-line text-sm"></i>
                         <span class="text-[15px] font-medium">ランキング</span>
                     </div>
@@ -223,58 +215,59 @@
 
         <main class="main-content">
             <header class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm sticky top-0 bg-bg-main z-10">
-                <i class="fas fa-hashtag text-text-muted mr-2 text-xl"></i>
-                <span class="font-bold text-white">achievements</span>
-                <div class="ml-auto flex items-center space-x-4 text-text-muted">
-                    <i class="fas fa-bell"></i>
-                    <i class="fas fa-thumbtack"></i>
-                    <i class="fas fa-user-group"></i>
-                    <div class="relative header-search">
-                        <input type="text" placeholder="検索" class="bg-bg-deep px-2 py-0.5 rounded text-sm w-32 focus:w-48 transition-all">
-                    </div>
-                    <i class="fas fa-inbox"></i>
-                    <i class="fas fa-question-circle"></i>
-                </div>
+                <i id="header-icon" class="fas fa-hashtag text-text-muted mr-2 text-xl"></i>
+                <span id="header-title" class="font-bold text-white">achievements</span>
             </header>
 
-            <div class="p-4 md:p-8">
+            <!-- 実績セクション -->
+            <div id="section-achievements" class="p-4 md:p-8">
                 <div id="user-profile" class="hidden mb-12 bg-bg-sidebar rounded-lg overflow-hidden border border-[#1f2023]">
                     <div class="h-24 bg-discord-blue"></div>
                     <div class="p-6 pt-0 -mt-12 flex flex-col md:flex-row items-center md:items-end md:space-x-6">
                         <div class="relative">
                             <img id="user-avatar" src="" class="w-24 h-24 rounded-full border-[6px] border-bg-sidebar bg-bg-sidebar">
-                            <div class="absolute bottom-2 right-2 w-6 h-6 bg-discord-green border-[4px] border-bg-sidebar rounded-full"></div>
                         </div>
                         <div class="flex-1 text-center md:text-left mt-4 md:mt-0">
                             <h2 id="user-name" class="text-2xl font-bold text-white flex flex-col md:flex-row items-center md:justify-start justify-center">--- <span class="md:ml-2 text-text-muted font-normal text-sm">#<span id="user-id-suffix">0000</span></span></h2>
                             <div class="flex justify-center md:justify-start space-x-4 mt-2">
-                                <span class="text-xs font-bold uppercase text-text-muted">実績達成率: <span id="completion-percent" class="text-white">0%</span></span>
+                                <span class="text-xs font-bold uppercase text-text-muted">解除率: <span id="completion-percent" class="text-white">0%</span></span>
                                 <span class="text-xs font-bold uppercase text-text-muted">解除済み: <span id="completion-count" class="text-white">0</span> / <span id="total-count">0</span></span>
                             </div>
                         </div>
-                        <div class="mt-6 md:mt-0">
-                            <button id="nav-login-btn" class="discord-btn w-full md:w-auto">
-                                <i class="fab fa-discord mr-2"></i> Discordで再認証
-                            </button>
-                        </div>
+                        <button id="nav-login-btn" class="discord-btn mt-6 md:mt-0">Discordで再認証</button>
                     </div>
                 </div>
 
                 <div id="achievements-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Cards injected here -->
+                    <!-- カード注入 -->
+                </div>
+            </div>
+
+            <!-- ランキングセクション -->
+            <div id="section-ranking" class="hidden p-4 md:p-8">
+                <div class="max-w-4xl mx-auto">
+                    <div class="mb-8 text-center md:text-left">
+                        <h2 class="text-3xl font-bold text-white">実績解除数ランキング</h2>
+                        <p class="text-text-muted">サーバー内の実績解除数トッププレイヤーを表示しています</p>
+                    </div>
+                    <div id="ranking-list" class="space-y-3">
+                        <!-- ランキングアイテム注入 -->
+                        <div class="text-center py-12 text-text-muted">
+                            <i class="fas fa-circle-notch fa-spin text-3xl mb-4"></i>
+                            <p>データを読み込んでいます...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- ログインモーダル -->
     <div id="login-modal" class="fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[100] px-4">
         <div class="bg-bg-sidebar p-8 rounded shadow-2xl max-w-sm w-full text-center">
             <i class="fab fa-discord text-5xl text-discord-blue mb-4"></i>
             <h2 class="text-2xl font-bold mb-2 text-white">おかえりなさい！</h2>
-            <p class="text-text-muted mb-6 text-sm">実績を確認するにはDiscordアカウントとの連携が必要です。</p>
-            <button id="modal-login-btn" class="w-full discord-btn py-3 text-lg">
-                ログイン
-            </button>
+            <button id="modal-login-btn" class="w-full discord-btn py-3 text-lg">ログイン</button>
         </div>
     </div>
 
@@ -282,7 +275,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, getDocs, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -291,8 +284,7 @@
             projectId: "naraku-archievements",
             storageBucket: "naraku-archievements.firebasestorage.app",
             messagingSenderId: "1077300098321",
-            appId: "1:1077300098321:web:3c4538e4387c09750948b0",
-            measurementId: "G-NV3MT8D2VV"
+            appId: "1:1077300098321:web:3c4538e4387c09750948b0"
         };
 
         const CLIENT_ID = '1500128602749141052';
@@ -301,7 +293,7 @@
 
         let db = null;
         let currentUser = null;
-        let userStatsMap = {}; 
+        let allStats = {};
 
         const achievementDataMaster = [
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
@@ -311,7 +303,7 @@
             { id: "talker_4", title: "おしゃべり好き Lv.4", desc: "合計50,000メッセージを送信する", icon: "fa-comments", color: "text-emerald-500", requirement: 50000 },
             { id: "talker_5", title: "おしゃべり好き Lv.5", desc: "合計100,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 100000 },
             { id: "talker_6", title: "おしゃべり好き Lv.6", desc: "合計300,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 300000 },
-            { id: "talker_5", title: "おしゃべり好き Lv.7", desc: "合計800,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 800000 },
+            { id: "talker_7", title: "おしゃべり好き Lv.7", desc: "合計800,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 800000 },
             { id: "talker_8", title: "おしゃべり好き Lv.8", desc: "合計1,000,000メッセージを送信する", icon: "fa-chrome", color: "text-yellow-400", requirement: 1000000 },
             { id: "talker_9", title: "おしゃべり好き Lv.9", desc: "合計2,500,000メッセージを送信する", icon: "fa-chrome", color: "text-yellow-400", requirement: 2500000 },
             { id: "talker_10", title: "近所のおばちゃん", desc: "合計9,999,999メッセージを送信する", icon: "fa-chrome", color: "text-yellow-400", requirement: 9999999 },
@@ -325,7 +317,7 @@
             { id: "morning_1", title: "早起き Lv.1", desc: "早朝6時台に50回発言する", icon: "fa-sun", color: "text-orange-300", requirement: 50 },
             { id: "morning_2", title: "早起き Lv.2", desc: "早朝6時台に500回発言する", icon: "fa-sun", color: "text-orange-400", requirement: 500 },
             { id: "morning_3", title: "朝日を拝む者", desc: "早朝6時台に2,000回発言する", icon: "fa-cloud-sun", color: "text-orange-500", requirement: 2000 },
-            { id: "morning_3", title: "太陽神崇拝者", desc: "早朝6時台に10,000回発言する", icon: "fa-cloud-sun", color: "text-orange-500", requirement: 10000 },
+            { id: "morning_4", title: "太陽神崇拝者", desc: "早朝6時台に10,000回発言する", icon: "fa-cloud-sun", color: "text-orange-500", requirement: 10000 },
             { id: "mention_1", title: "メンション Lv.1", desc: "メンションを50回送る", icon: "fa-at", color: "text-red-300", requirement: 50 },
             { id: "mention_2", title: "メンション Lv.2", desc: "メンションを200回送る", icon: "fa-at", color: "text-red-400", requirement: 200 },
             { id: "mention_3", title: "通知の嵐", desc: "メンションを500回送る", icon: "fa-bullhorn", color: "text-red-500", requirement: 500 },
@@ -373,7 +365,7 @@
             { id: "streak_4", title: "不滅の魔王", desc: "3年間連続で発言する", icon: "fa-skull-crossbones", color: "text-orange-500", requirement: 1095 },
             { id: "daily_1", title: "デイリー Lv.1", desc: "累計30日、サーバーに現れる", icon: "fa-check", color: "text-green-300", requirement: 30 },
             { id: "daily_2", title: "デイリー Lv.2", desc: "累計100日、サーバーに現れる", icon: "fa-square-check", color: "text-green-400", requirement: 100 },
-            { id: "daily_3", title: "累計365日", desc: "累計365日、サーバーに現れる", icon: "fa-calendar-check", color: "text-green-500", requirement: 300 },
+            { id: "daily_3", title: "累計365日", desc: "累計365日、サーバーに現れる", icon: "fa-calendar-check", color: "text-green-500", requirement: 365 },
             { id: "early_adopter", title: "初期メンバー", desc: "サーバーIDの初期100人以内に入る", icon: "fa-id-badge", color: "text-blue-600", requirement: 1 },
             { id: "holiday_user", title: "祝日の皆勤賞", desc: "祝日に合計10回発言する", icon: "fa-flag", color: "text-red-500", requirement: 10 },
             { id: "weekend_user", title: "週末の主", desc: "土日に合計50回発言する", icon: "fa-couch", color: "text-indigo-400", requirement: 50 },
@@ -381,7 +373,7 @@
             { id: "bump_1", title: "広報担当 Lv.1", desc: "サーバー宣伝コマンドを50回実行する", icon: "fa-bullhorn", color: "text-yellow-300", requirement: 50 },
             { id: "bump_2", title: "広報担当 Lv.2", desc: "サーバー宣伝コマンドを500回実行する", icon: "fa-bullhorn", color: "text-yellow-400", requirement: 500 },
             { id: "bump_3", title: "奈落の宣伝隊長", desc: "サーバー宣伝コマンドを5000回実行する", icon: "fa-megaphone", color: "text-yellow-500", requirement: 5000 },
-            { id: "bump_3", title: "宣伝の不死王", desc: "サーバー宣伝コマンドを5万回実行する", icon: "fa-megaphone", color: "text-yellow-500", requirement: 50000 },
+            { id: "bump_4", title: "宣伝の不死王", desc: "サーバー宣伝コマンドを5万回実行する", icon: "fa-megaphone", color: "text-yellow-500", requirement: 50000 },
             { id: "inviter_1", title: "人脈の主 Lv.1", desc: "友達を1人招待する", icon: "fa-user-plus", color: "text-blue-300", requirement: 1 },
             { id: "inviter_2", title: "人脈の主 Lv.2", desc: "友達を5人招待する", icon: "fa-users-plus", color: "text-blue-400", requirement: 5 },
             { id: "inviter_3", title: "奈落の外交官", desc: "友達を20人招待する", icon: "fa-handshake", color: "text-blue-500", requirement: 20 },
@@ -405,14 +397,6 @@
         ];
 
         let achievementData = achievementDataMaster.map(a => ({ ...a, current: 0 }));
-
-        const updateStatInFirestore = async (statId, newValue) => {
-            if (!db || !currentUser) return;
-            const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUser.id);
-            try {
-                await setDoc(docRef, { [statId]: newValue }, { merge: true });
-            } catch (e) { console.error("Update failed:", e); }
-        };
 
         function showToast(title) {
             const container = document.getElementById('toast-container');
@@ -454,7 +438,6 @@
                         <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
                     </div>
                 `;
-
                 grid.appendChild(card);
             });
 
@@ -463,15 +446,79 @@
             document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementData.length) * 100)}%`;
         };
 
+        const renderRanking = async () => {
+            const list = document.getElementById('ranking-list');
+            if (!list || !db) return;
+
+            // Fetch all stats
+            const statsCol = collection(db, 'artifacts', APP_ID, 'public', 'data', 'userStats');
+            const snapshot = await getDocs(statsCol);
+            
+            const rankingData = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                let count = 0;
+                achievementDataMaster.forEach(master => {
+                    if (data[master.id] && Number(data[master.id]) >= master.requirement) {
+                        count++;
+                    }
+                });
+                rankingData.push({ id: doc.id, count: count });
+            });
+
+            // Sort by count descending
+            rankingData.sort((a, b) => b.count - a.count);
+
+            list.innerHTML = '';
+            rankingData.forEach((user, index) => {
+                const rank = index + 1;
+                const isMe = currentUser && user.id === currentUser.id;
+                const item = document.createElement('div');
+                item.className = `ranking-item ${isMe ? 'border-2 border-discord-blue' : ''}`;
+                
+                let rankDisplay = `<div class="rank-badge ${rank <= 3 ? 'rank-'+rank : 'bg-[#313338] text-text-muted'}">${rank}</div>`;
+                if(rank === 1) rankDisplay = `<div class="rank-badge rank-1"><i class="fas fa-crown text-sm"></i></div>`;
+
+                item.innerHTML = `
+                    ${rankDisplay}
+                    <div class="flex-1">
+                        <p class="font-bold text-white text-sm">ユーザーID: ${user.id} ${isMe ? '<span class="ml-2 text-[10px] bg-discord-blue px-1.5 py-0.5 rounded">YOU</span>' : ''}</p>
+                        <p class="text-xs text-text-muted">実績解除数: <span class="text-white">${user.count}</span></p>
+                    </div>
+                    <div class="text-discord-blue font-bold text-lg">${Math.round((user.count / achievementDataMaster.length) * 100)}%</div>
+                `;
+                list.appendChild(item);
+            });
+        };
+
         const init = async () => {
+            // Tab Logic
+            document.getElementById('tab-achievements').onclick = () => {
+                document.getElementById('section-achievements').classList.remove('hidden');
+                document.getElementById('section-ranking').classList.add('hidden');
+                document.getElementById('tab-achievements').className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer';
+                document.getElementById('tab-ranking').className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer transition';
+                document.getElementById('header-icon').className = 'fas fa-hashtag text-text-muted mr-2 text-xl';
+                document.getElementById('header-title').innerText = 'achievements';
+            };
+
+            document.getElementById('tab-ranking').onclick = () => {
+                document.getElementById('section-achievements').classList.add('hidden');
+                document.getElementById('section-ranking').classList.remove('hidden');
+                document.getElementById('tab-ranking').className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer';
+                document.getElementById('tab-achievements').className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded-md flex items-center space-x-2 cursor-pointer transition';
+                document.getElementById('header-icon').className = 'fas fa-chart-line text-text-muted mr-2 text-xl';
+                document.getElementById('header-title').innerText = 'leaderboard';
+                renderRanking();
+            };
+
             document.getElementById('nav-login-btn').onclick = () => {
                 window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`;
             };
             document.getElementById('modal-login-btn').onclick = document.getElementById('nav-login-btn').onclick;
 
             try {
-                const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
-                const app = initializeApp(config);
+                const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 const auth = getAuth(app);
                 await signInAnonymously(auth);
@@ -500,7 +547,6 @@
                     onSnapshot(statsDoc, (snapshot) => {
                         if (snapshot.exists()) {
                             const data = snapshot.data();
-                            userStatsMap = data; 
                             achievementData = achievementData.map(ach => {
                                 const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
                                 if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) {
@@ -510,7 +556,7 @@
                             });
                             renderAchievements();
                         }
-                    }, (error) => { console.error("Firestore Error:", error); });
+                    });
                 }
             }
             renderAchievements();
