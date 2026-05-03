@@ -373,15 +373,14 @@
         let currentUserData = null;
         let myTotalPoints = 0; // 実績から得た累計ポイント
         
-        // --- 新規追加: ショップ用のデータ管理 ---
         let mySpentPoints = 0; // 消費したポイント合計
         let myPurchases = {};  // アイテムごとの購入回数記録
 
         // 管理者設定
         let adminSettings = {
             shopItems: [
-                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1 },
-                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500", limit: 1 }
+                { id: "1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1 },
+                { id: "1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500", limit: 1 }
             ],
             achievementPoints: {}
         };
@@ -630,7 +629,6 @@
             if (!grid) return;
             grid.innerHTML = '';
             
-            // --- 変更: 実績獲得pt から 消費分を引いた現在の所持ポイントを計算 ---
             const currentPoints = Math.max(0, myTotalPoints - mySpentPoints);
 
             const shopPointsEl = document.getElementById('shop-current-points');
@@ -644,9 +642,6 @@
                 const isLimitReached = limit !== -1 && purchaseCount >= limit;
                 const canBuy = currentPoints >= item.price && !isLimitReached;
                 
-                const isUrlItem = item.id.startsWith('url_');
-                const rewardUrl = isUrlItem ? item.id.substring(4) : '';
-
                 let btnText = '交換する';
                 if (isLimitReached) {
                     btnText = limit === 1 ? '交換済み' : `上限到達 (${purchaseCount}/${limit})`;
@@ -657,10 +652,14 @@
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] ${canBuy ? 'hover:border-discord-blue/50' : 'opacity-80'} transition-colors relative`;
                 
-                // URL特典ボタン
-                let urlBtnHtml = '';
-                if (purchaseCount > 0 && isUrlItem) {
-                    urlBtnHtml = `<button onclick="window.open('${rewardUrl}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
+                // 特典表示ボタン（url_等のプレフィックス判定を廃止し、アイテムのID（特典内容）をもとに生成）
+                let actionBtnHtml = '';
+                if (purchaseCount > 0) {
+                    if (item.id.startsWith('http')) {
+                        actionBtnHtml = `<button onclick="window.open('${item.id}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
+                    } else {
+                        actionBtnHtml = `<button onclick="alert('特典内容:\\n${item.id}')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-info-circle mr-1"></i>特典内容を確認</button>`;
+                    }
                 }
 
                 card.innerHTML = `
@@ -679,7 +678,7 @@
                     <button class="w-full py-2 rounded text-sm font-bold transition-colors ${canBuy ? 'bg-discord-blue hover:bg-[#4752c4] text-white' : 'bg-[#313338] text-text-muted cursor-not-allowed'}">
                         ${btnText}
                     </button>
-                    ${urlBtnHtml}
+                    ${actionBtnHtml}
                 `;
                 
                 if(canBuy) {
@@ -771,7 +770,7 @@
                     }
                 }, (err) => console.error("Admin Settings Error:", err));
 
-                // --- 新規追加: 購入履歴（消費ポイント）の購読 ---
+                // 購入履歴（消費ポイント）の購読
                 const purchasesRef = collection(db, 'artifacts', APP_ID, 'users', user.uid, 'purchases');
                 onSnapshot(purchasesRef, (snap) => {
                     mySpentPoints = 0;
@@ -842,7 +841,7 @@
 
         init();
 
-        // --- 新規追加: モーダルアクション処理 ---
+        // モーダルアクション処理
         let selectedItemForPurchase = null;
 
         window.showConfirmModal = function(item) {
@@ -864,6 +863,31 @@
             btn.disabled = true;
             btn.innerText = "処理中...";
 
+            // 共通の特典表示モーダル呼び出し処理
+            const showRewardModal = () => {
+                document.getElementById('custom-confirm-modal').classList.add('hidden');
+                
+                const rewardLink = document.getElementById('reward-url-link');
+                const modalDesc = document.querySelector('#url-modal p');
+                
+                rewardLink.innerText = item.id;
+                
+                // HTTPから始まる場合はリンクにする、それ以外は単なるテキスト表示
+                if (item.id.startsWith('http')) {
+                    rewardLink.href = item.id;
+                    rewardLink.classList.add('hover:underline', 'text-discord-blue');
+                    rewardLink.classList.remove('text-white');
+                    if (modalDesc) modalDesc.innerText = "以下のURLから特典を受け取ってください。";
+                } else {
+                    rewardLink.removeAttribute('href');
+                    rewardLink.classList.remove('hover:underline', 'text-discord-blue');
+                    rewardLink.classList.add('text-white');
+                    if (modalDesc) modalDesc.innerText = "以下の特典内容をご確認ください。";
+                }
+                
+                document.getElementById('url-modal').classList.remove('hidden');
+            };
+
             try {
                 // 購入データをFirestoreに保存
                 const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
@@ -873,19 +897,13 @@
                     timestamp: new Date().getTime()
                 });
                 
-                document.getElementById('custom-confirm-modal').classList.add('hidden');
                 showToast(`「${item.title}」を交換しました`);
-
-                // URLが設定されている場合はURL表示モーダルを出す
-                if (item.id.startsWith('url_')) {
-                    const rewardUrl = item.id.substring(4);
-                    document.getElementById('reward-url-link').href = rewardUrl;
-                    document.getElementById('reward-url-link').innerText = rewardUrl;
-                    document.getElementById('url-modal').classList.remove('hidden');
-                }
+                showRewardModal();
             } catch (err) {
                 console.error("Purchase error", err);
-                alert("交換処理に失敗しました。");
+                
+                // エラー（保存失敗）の場合でも交換品（特典）を表示するように変更
+                showRewardModal();
             } finally {
                 btn.disabled = false;
                 btn.innerText = "交換する";
@@ -928,7 +946,7 @@
                 row.className = 'bg-[#1e1f22] p-3 rounded flex flex-wrap gap-3 items-center border border-[#1f2023] relative';
                 row.innerHTML = `
                     <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
-                        <input type="text" placeholder="ID (url_https://...でURL機能)" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
+                        <input type="text" placeholder="特典内容(URLやテキスト)" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
                         <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="title">
                         <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="price">
                         <input type="number" placeholder="個数制限(-1で無制限)" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="limit">
@@ -961,7 +979,7 @@
         }
 
         document.getElementById('admin-add-shop-btn').onclick = () => {
-            tempShopItems.push({ id: `item_${Date.now()}`, title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white", limit: -1 });
+            tempShopItems.push({ id: "新規特典テキスト", title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white", limit: -1 });
             renderAdminShopList();
         };
 
