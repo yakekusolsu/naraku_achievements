@@ -395,7 +395,8 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
         }
 
-        const renderAchievements = () => {
+        // 引数で渡されたデータをレンダリングするように変更（デフォルトは自分のデータ）
+        const renderAchievements = (dataToRender = achievementData) => {
             const grid = document.getElementById('achievements-grid');
             if(!grid) return;
             grid.innerHTML = '';
@@ -403,7 +404,7 @@
             let unlockedCount = 0;
             let totalPoints = 0;
 
-            achievementData.forEach(ach => {
+            dataToRender.forEach(ach => {
                 const isUnlocked = ach.current >= ach.requirement;
                 if (isUnlocked) {
                     unlockedCount++;
@@ -440,8 +441,39 @@
 
             document.getElementById('total-points').innerText = `${totalPoints.toLocaleString()}pt`;
             document.getElementById('completion-count').innerText = unlockedCount;
-            document.getElementById('total-count').innerText = achievementData.length;
-            document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementData.length) * 100)}%`;
+            document.getElementById('total-count').innerText = achievementDataMaster.length;
+            document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementDataMaster.length) * 100)}%`;
+        };
+
+        // 他人の実績一覧を表示する関数
+        const showUserAchievements = (targetId, targetName, targetAvatar, targetData) => {
+            const secAch = document.getElementById('section-achievements');
+            const secRank = document.getElementById('section-ranking');
+            const tabAch = document.getElementById('tab-achievements');
+            const tabRank = document.getElementById('tab-ranking');
+
+            // 画面を実績一覧に切り替え
+            secAch.classList.remove('hidden'); 
+            secRank.classList.add('hidden');
+            tabAch.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
+            tabRank.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
+            
+            document.getElementById('header-title').innerText = `${targetName}'s achievements`;
+
+            // プロフィール情報の書き換え
+            document.getElementById('user-profile').classList.remove('hidden');
+            document.getElementById('user-name').childNodes[0].textContent = targetName + " ";
+            document.getElementById('user-id-suffix').innerText = targetId.substring(0,4);
+            document.getElementById('user-avatar').src = targetAvatar;
+
+            // 他人の実績データを構築
+            const targetAchievementData = achievementDataMaster.map(ach => {
+                const val = targetData[ach.id] !== undefined ? Number(targetData[ach.id]) : 0;
+                return { ...ach, current: val };
+            });
+
+            // 他人のデータでレンダリング
+            renderAchievements(targetAchievementData);
         };
 
         const renderRanking = async () => {
@@ -455,14 +487,20 @@
                     const data = docSnap.data();
                     let count = 0;
                     achievementDataMaster.forEach(m => { if (data[m.id] !== undefined && Number(data[m.id]) >= m.requirement) count++; });
-                    rankingData.push({ id: docSnap.id, count, name: data.userName || 'Unknown User', avatar: data.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png' });
+                    // クリック時に渡せるように rawData として保存
+                    rankingData.push({ id: docSnap.id, count, name: data.userName || 'Unknown User', avatar: data.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png', rawData: data });
                 });
                 rankingData.sort((a, b) => b.count - a.count);
                 list.innerHTML = rankingData.length ? '' : '<p class="text-center py-10 text-text-muted">データが存在しません</p>';
+                
                 rankingData.forEach((user, index) => {
                     const rank = index + 1;
                     const item = document.createElement('div');
-                    item.className = `ranking-item ${currentUserData && user.id === currentUserData.id ? 'bg-discord-blue/10 border-discord-blue/40 shadow-inner' : ''}`;
+                    // cursor-pointer を追加してクリック可能であることを示す
+                    item.className = `ranking-item cursor-pointer ${currentUserData && user.id === currentUserData.id ? 'bg-discord-blue/10 border-discord-blue/40 shadow-inner' : ''}`;
+                    // クリックイベントで該当ユーザーの実績を表示
+                    item.onclick = () => showUserAchievements(user.id, user.name, user.avatar, user.rawData);
+                    
                     let rankBox = rank <= 3 ? `<div class="rank-badge rank-${rank}">${rank}</div>` : `<div class="rank-badge rank-other">${rank}</div>`;
                     item.innerHTML = `
                         ${rankBox}
@@ -489,7 +527,24 @@
                 tabAch.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
                 tabRank.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
                 document.getElementById('header-title').innerText = 'achievements';
+                
+                // 他人の実績を見ていた場合、自分の実績表示状態にリセットする
+                if (currentUserData) {
+                    const fullName = currentUserData.global_name || currentUserData.username;
+                    const avatarUrl = currentUserData.avatar ? `https://cdn.discordapp.com/avatars/${currentUserData.id}/${currentUserData.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUserData.id)%5}.png`;
+                    document.getElementById('user-name').childNodes[0].textContent = fullName + " ";
+                    document.getElementById('user-id-suffix').innerText = currentUserData.id.substring(0,4);
+                    document.getElementById('user-avatar').src = avatarUrl;
+                    document.getElementById('user-profile').classList.remove('hidden');
+                } else {
+                    // ログイン前ならプロフィール非表示
+                    document.getElementById('user-profile').classList.add('hidden');
+                }
+                
+                // 自分の実績データでレンダリング
+                renderAchievements();
             };
+            
             tabRank.onclick = () => {
                 secAch.classList.add('hidden'); secRank.classList.remove('hidden');
                 tabRank.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
@@ -531,7 +586,7 @@
                         document.getElementById('sidebar-avatar').src = avatarUrl;
                         document.getElementById('sidebar-name').innerText = fullName;
 
-                        // UIを即座に再描画（データがない場合でも0%で表示されるように）
+                        // UIを即座に再描画
                         renderAchievements();
                         
                         // Firestore監視開始
@@ -545,7 +600,11 @@
                                     if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) showToast(ach.title);
                                     return { ...ach, current: newVal };
                                 });
-                                renderAchievements();
+                                // 自分の実績を表示している時のみリアルタイム更新を反映
+                                const currentHeader = document.getElementById('header-title').innerText;
+                                if (currentHeader === 'achievements') {
+                                    renderAchievements();
+                                }
                             }
                         });
                     }
