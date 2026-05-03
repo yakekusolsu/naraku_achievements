@@ -360,7 +360,7 @@
         let mySpentPoints = 0; 
         let myPurchases = {};  
         let globalPurchasesCount = {}; // 全ユーザーのアイテム別合計購入数
-        let failedPurchases = []; // 追加: 購入失敗した分をローカルに保持してptと制限を維持
+        let localPurchases = []; // 追加: ローカルでの購入履歴（ロールバック防止用）
 
         let adminSettings = {
             shopItems: [
@@ -774,16 +774,21 @@
                 onSnapshot(purchasesRef, (snap) => {
                     mySpentPoints = 0;
                     myPurchases = {};
+                    const serverIds = new Set();
+
                     snap.forEach(docSnap => {
                         const data = docSnap.data();
                         mySpentPoints += data.price || 0;
                         myPurchases[data.itemId] = (myPurchases[data.itemId] || 0) + 1;
+                        if (data.localId) serverIds.add(data.localId);
                     });
                     
-                    // 購入失敗した分を合算して維持する
-                    failedPurchases.forEach(fp => {
-                        mySpentPoints += fp.price;
-                        myPurchases[fp.itemId] = (myPurchases[fp.itemId] || 0) + 1;
+                    // Firestoreに保存されていないローカルの購入分を合算して維持する（ロールバック対策）
+                    localPurchases.forEach(lp => {
+                        if (!serverIds.has(lp.localId)) {
+                            mySpentPoints += lp.price;
+                            myPurchases[lp.itemId] = (myPurchases[lp.itemId] || 0) + 1;
+                        }
                     });
                     
                     const currentHeader = document.getElementById('header-title').innerText;
@@ -876,28 +881,32 @@
                 }
             };
 
+            // ローカルで即座に反映するための記録を作成
+            const purchaseRecord = { 
+                itemId: item.id, 
+                price: item.price, 
+                timestamp: new Date().getTime(),
+                localId: 'loc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+            };
+            
+            // ローカル配列に追加し、UI用の変数を更新（Firebaseのロールバック対策）
+            localPurchases.push(purchaseRecord);
+            mySpentPoints += item.price;
+            myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
+            globalPurchasesCount[item.id] = (globalPurchasesCount[item.id] || 0) + 1;
+
+            // 成功時と同じUIアクションを実行し、画面を直ちに更新
+            performSuccessAction();
+            const currentHeader = document.getElementById('header-title').innerText;
+            if (currentHeader === 'point shop') renderShop();
+
+            // バックグラウンドでFirestoreへ書き込みを試みる
             try {
                 const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
-                await addDoc(userRef, { 
-                    itemId: item.id, 
-                    price: item.price, 
-                    timestamp: new Date().getTime()
-                });
-                
-                performSuccessAction();
+                await addDoc(userRef, purchaseRecord);
             } catch (err) {
-                console.error("Purchase error", err);
-                // エラー時も失敗データをローカル保持し、成功と同じ振る舞いをする
-                failedPurchases.push({ itemId: item.id, price: item.price });
-                
-                mySpentPoints += item.price;
-                myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
-                globalPurchasesCount[item.id] = (globalPurchasesCount[item.id] || 0) + 1;
-                
-                performSuccessAction();
-                
-                const currentHeader = document.getElementById('header-title').innerText;
-                if (currentHeader === 'point shop') renderShop();
+                console.error("Purchase error (fallback active)", err);
+                // エラーになっても、ローカルデータでUIは正常に維持されます
             } finally {
                 btn.disabled = false;
                 btn.innerText = "交換する";
