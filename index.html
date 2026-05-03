@@ -33,6 +33,7 @@
             display: flex;
             height: 100vh;
             width: 100vw;
+            position: relative;
         }
 
         .server-sidebar {
@@ -45,18 +46,34 @@
             gap: 8px;
         }
 
+        /* モバイル向けにサイドバーをスライド式に変更 */
         .channel-sidebar {
             width: 240px;
             background-color: var(--bg-sidebar);
-            display: none;
+            display: flex;
             flex-direction: column;
             border-top-left-radius: 8px;
+            
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: -240px;
+            z-index: 50;
+            transition: left 0.3s ease;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+        }
+
+        .channel-sidebar.open {
+            left: 0;
         }
 
         @media (min-width: 768px) {
             body { overflow: hidden; }
             .server-sidebar { display: flex; }
-            .channel-sidebar { display: flex; }
+            .channel-sidebar { 
+                position: static;
+                box-shadow: none;
+            }
         }
 
         .server-icon {
@@ -165,6 +182,9 @@
 <body>
 
     <div class="app-container">
+        <!-- モバイル用オーバーレイ -->
+        <div id="mobile-overlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden transition-opacity"></div>
+
         <!-- Sidebar -->
         <aside class="server-sidebar">
             <div class="server-icon active">
@@ -178,11 +198,11 @@
 
         <!-- Channels -->
         <aside class="channel-sidebar">
-            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm">
+            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm shrink-0">
                 <span class="font-bold text-white truncate">奈落サーバー</span>
                 <i class="fas fa-chevron-down ml-auto text-xs text-text-muted"></i>
             </div>
-            <div class="flex-1 p-2 space-y-1">
+            <div class="flex-1 p-2 space-y-1 overflow-y-auto">
                 <p class="text-[11px] font-bold text-text-muted px-2 mt-4 mb-1 uppercase tracking-wider">実績メニュー</p>
                 <div id="tab-achievements" class="bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer">
                     <i class="fas fa-trophy text-sm w-5 text-center"></i>
@@ -197,7 +217,7 @@
                     <span class="text-[15px] font-medium">ポイントショップ</span>
                 </div>
             </div>
-            <div id="sidebar-user-info" class="bg-[#232428] p-1.5 h-14 flex items-center space-x-2">
+            <div id="sidebar-user-info" class="bg-[#232428] p-1.5 h-14 flex items-center space-x-2 shrink-0">
                 <div class="relative">
                     <img id="sidebar-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" class="w-8 h-8 rounded-full">
                     <div class="absolute bottom-0 right-0 w-3 h-3 bg-discord-green border-[3px] border-[#232428] rounded-full"></div>
@@ -214,8 +234,9 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <header class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm sticky top-0 bg-bg-main z-10">
-                <i id="header-icon" class="fas fa-hashtag text-text-muted mr-2 text-xl"></i>
+            <header class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm sticky top-0 bg-bg-main z-10 shrink-0">
+                <i id="mobile-menu-btn" class="fas fa-bars text-text-muted mr-4 text-xl cursor-pointer md:hidden hover:text-white transition"></i>
+                <i id="header-icon" class="fas fa-hashtag text-text-muted mr-2 text-xl hidden md:block"></i>
                 <span id="header-title" class="font-bold text-white uppercase tracking-wide">achievements</span>
             </header>
 
@@ -652,7 +673,7 @@
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] ${canBuy ? 'hover:border-discord-blue/50' : 'opacity-80'} transition-colors relative`;
                 
-                // 特典表示ボタン（url_等のプレフィックス判定を廃止し、アイテムのID（特典内容）をもとに生成）
+                // 特典表示ボタン
                 let actionBtnHtml = '';
                 if (purchaseCount > 0) {
                     if (item.id.startsWith('http')) {
@@ -703,6 +724,28 @@
             const inactiveTabClass = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
             const activeTabClass = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
 
+            // モバイル用メニュー制御
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const channelSidebar = document.querySelector('.channel-sidebar');
+            const mobileOverlay = document.getElementById('mobile-overlay');
+
+            const closeMobileMenu = () => {
+                if(channelSidebar) channelSidebar.classList.remove('open');
+                if(mobileOverlay) mobileOverlay.classList.add('hidden');
+            };
+
+            if(mobileMenuBtn) {
+                mobileMenuBtn.onclick = () => {
+                    channelSidebar.classList.toggle('open');
+                    if (channelSidebar.classList.contains('open')) {
+                        mobileOverlay.classList.remove('hidden');
+                    } else {
+                        mobileOverlay.classList.add('hidden');
+                    }
+                };
+            }
+            if(mobileOverlay) mobileOverlay.onclick = closeMobileMenu;
+
             tabAch.onclick = () => {
                 secAch.classList.remove('hidden'); secRank.classList.add('hidden'); secShop.classList.add('hidden');
                 tabAch.className = activeTabClass;
@@ -720,6 +763,7 @@
                     document.getElementById('user-profile').classList.add('hidden');
                 }
                 renderAchievements(achievementData, true);
+                closeMobileMenu();
             };
             
             tabRank.onclick = () => {
@@ -729,6 +773,7 @@
                 tabShop.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'leaderboard';
                 renderRanking();
+                closeMobileMenu();
             };
 
             tabShop.onclick = () => {
@@ -738,6 +783,7 @@
                 tabRank.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'point shop';
                 renderShop();
+                closeMobileMenu();
             };
 
             const loginAction = () => { window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`; };
@@ -764,7 +810,8 @@
                         if (data.shopItems) adminSettings.shopItems = data.shopItems;
                         if (data.achievementPoints) adminSettings.achievementPoints = data.achievementPoints;
                         
-                        const currentHeader = document.getElementById('header-title').innerText;
+                        // ※ innerText が大文字化される影響を防ぐため .textContent.trim().toLowerCase() を使用して判定
+                        const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
                         if (currentHeader === 'achievements') renderAchievements(achievementData, true);
                         if (currentHeader === 'point shop') renderShop();
                     }
@@ -781,7 +828,8 @@
                         myPurchases[data.itemId] = (myPurchases[data.itemId] || 0) + 1;
                     });
                     
-                    const currentHeader = document.getElementById('header-title').innerText;
+                    // ※ innerText が大文字化される影響を防ぐため .textContent.trim().toLowerCase() を使用して判定
+                    const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
                     if (currentHeader === 'point shop') renderShop();
                 }, (err) => console.error("Purchases Error:", err));
 
@@ -818,7 +866,8 @@
                                         return { ...ach, current: newVal };
                                     });
                                     
-                                    const currentHeader = document.getElementById('header-title').innerText;
+                                    // ※ innerText が大文字化される影響を防ぐため .textContent.trim().toLowerCase() を使用して判定
+                                    const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
                                     if (currentHeader === 'achievements') {
                                         const isViewingSelf = document.getElementById('user-name').innerText.includes(fullName);
                                         if (isViewingSelf) renderAchievements(achievementData, true);
