@@ -380,7 +380,7 @@
             { id: "boost_long_2", title: "永遠の守護者", desc: "累計1年間ブーストを継続する", icon: "fa-shield-heart", color: "text-yellow-500", requirement: 12 },
             { id: "boost_premium_talk", title: "特権階級の余裕", desc: "ブースト期間中に合計10,000メッセージを送信する", icon: "fa-gem", color: "text-cyan-400", requirement: 10000 },
             { id: "boost_anniversary", title: "祝杯のロケット", desc: "サーバーの記念日にブーストを行う", icon: "fa-wine-glass-empty", color: "text-red-400", requirement: 1 },
-            { id: "boost_speed", title: "光速のブースト", desc: "サーバー参加から24時間以内にブーストを行う", icon: "fa-bolt", color: "text-blue-500", requirement: 1 },
+            { id: "boost_speed", title: "光速의 ブースト", desc: "サーバー参加から24時間以内にブーストを行う", icon: "fa-bolt", color: "text-blue-500", requirement: 1 },
             { id: "boost_max_level", title: "深淵の極致", desc: "サーバーがレベル3の時にブーストを維持する", icon: "fa-angles-up", color: "text-fuchsia-600", requirement: 1 }
         ];
 
@@ -407,7 +407,6 @@
                 const isUnlocked = ach.current >= ach.requirement;
                 if (isUnlocked) {
                     unlockedCount++;
-                    // ポイント計算 (requirement 1 = 1 point)
                     totalPoints += ach.requirement;
                 }
 
@@ -518,6 +517,8 @@
                     const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
                     if (res.ok) {
                         currentUserData = await res.json();
+                        
+                        // ログイン成功直後にプロフィール表示を更新
                         document.getElementById('login-modal').classList.add('hidden');
                         document.getElementById('user-profile').classList.remove('hidden');
                         
@@ -529,13 +530,18 @@
                         document.getElementById('user-avatar').src = avatarUrl;
                         document.getElementById('sidebar-avatar').src = avatarUrl;
                         document.getElementById('sidebar-name').innerText = fullName;
+
+                        // UIを即座に再描画（データがない場合でも0%で表示されるように）
+                        renderAchievements();
                         
+                        // Firestore監視開始
                         const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
                         onSnapshot(statsDocRef, (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
                                 achievementData = achievementData.map(ach => {
                                     const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
+                                    // セッション開始後に実績が解除されたらトーストを表示
                                     if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) showToast(ach.title);
                                     return { ...ach, current: newVal };
                                 });
