@@ -279,15 +279,54 @@
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- Toast Container -->
     <div id="toast-container" class="fixed bottom-16 right-4 z-[200]"></div>
+
+    <!-- Admin Modal -->
+    <div id="admin-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[300] flex flex-col p-4 md:p-8 overflow-y-auto">
+        <div class="max-w-5xl w-full mx-auto bg-bg-sidebar rounded-xl shadow-2xl flex flex-col border border-[#1f2023] overflow-hidden">
+            <div class="h-14 border-b border-[#1f2023] flex items-center justify-between px-6 bg-[#232428]">
+                <h2 class="text-xl font-bold text-white"><i class="fas fa-hammer text-discord-blue mr-2"></i>管理者コントロールパネル</h2>
+                <button id="admin-close-btn" class="text-text-muted hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 flex-1 overflow-y-auto flex flex-col gap-8">
+                <!-- ショップ管理 -->
+                <section>
+                    <div class="flex justify-between items-end mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">ショップアイテム管理</h3>
+                            <p class="text-xs text-text-muted">ポイントショップに表示されるアイテムを追加・編集・削除します。</p>
+                        </div>
+                        <button id="admin-add-shop-btn" class="bg-discord-green hover:bg-[#1f8b4c] text-white px-3 py-1.5 rounded text-sm font-bold transition"><i class="fas fa-plus mr-1"></i>新規追加</button>
+                    </div>
+                    <div id="admin-shop-list" class="space-y-3"></div>
+                </section>
+
+                <div class="w-full h-[1px] bg-[#1f2023]"></div>
+
+                <!-- 実績報酬管理 -->
+                <section>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white">実績クリア報酬 (pt) 管理</h3>
+                        <p class="text-xs text-text-muted">各実績をクリアした際に獲得できるポイント数を変更します。</p>
+                    </div>
+                    <div id="admin-achievement-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                </section>
+            </div>
+            <div class="p-4 border-t border-[#1f2023] bg-[#232428] flex justify-end gap-3">
+                <button id="admin-cancel-btn" class="px-4 py-2 rounded text-white hover:underline text-sm font-bold">キャンセル</button>
+                <button id="admin-save-btn" class="bg-discord-blue hover:bg-[#4752c4] text-white px-6 py-2 rounded text-sm font-bold transition">変更を保存して反映</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, getDocs, collection, setDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        const firebaseConfig = {
+        // Firebase設定
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
             authDomain: "naraku-archievements.firebaseapp.com",
             projectId: "naraku-archievements",
@@ -298,17 +337,29 @@
 
         const CLIENT_ID = '1500128602749141052';
         const REDIRECT_URI = window.location.origin + window.location.pathname;
-        const APP_ID = 'naraku-achievements'; 
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'naraku-achievements'; 
 
-        let db = null;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
         let currentUserData = null;
-        let myTotalPoints = 0; // 修正：ログインユーザー本人の確定ポイントのみを保持
+        let myTotalPoints = 0;
+
+        // 管理者設定
+        let adminSettings = {
+            shopItems: [
+                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500" },
+                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500" }
+            ],
+            achievementPoints: {}
+        };
 
         const achievementDataMaster = [
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
             { id: "talker_1", title: "おしゃべり好き Lv.1", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000 },
             { id: "talker_2", title: "おしゃべり好き Lv.2", desc: "合計5,000メッセージを送信する", icon: "fa-comments", color: "text-green-500", requirement: 5000 },
-            { id: "talker_3", title: "おしゃべり好き Lv.3", desc: "合計10,000メッセージを送信する", icon: "fa-emerald-400", requirement: 10000 },
+            { id: "talker_3", title: "おしゃべり好き Lv.3", desc: "合計10,000メッセージを送信する", icon: "fa-comments", color: "text-emerald-400", requirement: 10000 },
             { id: "talker_4", title: "おしゃべり好き Lv.4", desc: "合計50,000メッセージを送信する", icon: "fa-comments", color: "text-emerald-500", requirement: 50000 },
             { id: "talker_5", title: "おしゃべり好き Lv.5", desc: "合計100,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 100000 },
             { id: "talker_6", title: "おしゃべり好き Lv.6", desc: "合計300,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 300000 },
@@ -409,11 +460,15 @@
 
         function showToast(title) {
             const container = document.getElementById('toast-container');
+            if (!container) return;
             const toast = document.createElement('div');
             toast.className = 'bg-[#111214] border-l-4 border-discord-blue p-4 mb-2 shadow-2xl flex items-center space-x-3 min-w-[280px] transition-opacity duration-500 animate-bounce';
             toast.innerHTML = `<div class="bg-[#f1c40f] p-1.5 rounded-full"><i class="fas fa-trophy text-white text-xs"></i></div> <span class="text-sm font-bold">${title} を解除！</span>`;
             container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                setTimeout(() => toast.remove(), 500); 
+            }, 4000);
         }
 
         const renderAchievements = (dataToRender = achievementData, isSelf = true) => {
@@ -425,13 +480,14 @@
             let displayPoints = 0;
 
             dataToRender.forEach(ach => {
-                const isUnlocked = ach.current >= ach.requirement;
+                const currentRequirement = adminSettings.achievementPoints[ach.id] !== undefined ? adminSettings.achievementPoints[ach.id] : ach.requirement;
+                const isUnlocked = ach.current >= currentRequirement;
                 if (isUnlocked) {
                     unlockedCount++;
-                    displayPoints += ach.requirement;
+                    displayPoints += currentRequirement;
                 }
 
-                const progressPercent = Math.min(100, (ach.current / ach.requirement) * 100);
+                const progressPercent = Math.min(100, (ach.current / currentRequirement) * 100);
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col ${!isUnlocked ? 'opacity-50 grayscale' : 'border-discord-blue/20 bg-[#2b2d31]/40'}`;
                 card.innerHTML = `
@@ -443,7 +499,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between">
                                 <h4 class="font-bold text-[#f2f3f5] truncate">${ach.title}</h4>
-                                <span class="text-[10px] font-bold text-text-muted mt-1 shrink-0 ml-1">${ach.requirement}pt</span>
+                                <span class="text-[10px] font-bold text-text-muted mt-1 shrink-0 ml-1">${currentRequirement}pt</span>
                             </div>
                             <p class="text-[12px] text-text-muted leading-tight mt-1 line-clamp-2">${ach.desc}</p>
                         </div>
@@ -451,7 +507,7 @@
                     <div class="mt-4 space-y-1.5">
                         <div class="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-text-muted">
                             <span>Progress</span>
-                            <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${ach.requirement.toLocaleString()}</span>
+                            <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${currentRequirement.toLocaleString()}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill ${isUnlocked ? 'bg-discord-green' : ''}" style="width: ${progressPercent}%"></div></div>
                     </div>
@@ -459,35 +515,31 @@
                 grid.appendChild(card);
             });
 
-            // 修正：自分自身のデータレンダリング時のみポイント変数を確定
             if (isSelf) {
                 myTotalPoints = displayPoints;
             }
             
-            document.getElementById('total-points').innerText = `${displayPoints.toLocaleString()}pt`;
-            document.getElementById('completion-count').innerText = unlockedCount;
-            document.getElementById('total-count').innerText = achievementDataMaster.length;
-            document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementDataMaster.length) * 100)}%`;
+            const totalPointsEl = document.getElementById('total-points');
+            const compCountEl = document.getElementById('completion-count');
+            const totalCountEl = document.getElementById('total-count');
+            const compPercentEl = document.getElementById('completion-percent');
+
+            if(totalPointsEl) totalPointsEl.innerText = `${displayPoints.toLocaleString()}pt`;
+            if(compCountEl) compCountEl.innerText = unlockedCount;
+            if(totalCountEl) totalCountEl.innerText = achievementDataMaster.length;
+            if(compPercentEl) compPercentEl.innerText = `${Math.round((unlockedCount / achievementDataMaster.length) * 100)}%`;
         };
 
         const showUserAchievements = (targetId, targetName, targetAvatar, targetData) => {
-            const secAch = document.getElementById('section-achievements');
-            const secRank = document.getElementById('section-ranking');
-            const secShop = document.getElementById('section-shop');
-            const tabAch = document.getElementById('tab-achievements');
-            const tabRank = document.getElementById('tab-ranking');
-            const tabShop = document.getElementById('tab-shop');
-
-            secAch.classList.remove('hidden'); 
-            secRank.classList.add('hidden');
-            secShop.classList.add('hidden');
+            document.getElementById('section-achievements').classList.remove('hidden'); 
+            document.getElementById('section-ranking').classList.add('hidden');
+            document.getElementById('section-shop').classList.add('hidden');
             
-            tabAch.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
-            tabRank.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
-            tabShop.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
+            document.getElementById('tab-achievements').className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
+            document.getElementById('tab-ranking').className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
+            document.getElementById('tab-shop').className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
             
             document.getElementById('header-title').innerText = `${targetName}'s achievements`;
-
             document.getElementById('user-profile').classList.remove('hidden');
             document.getElementById('user-name').childNodes[0].textContent = targetName + " ";
             document.getElementById('user-id-suffix').innerText = targetId.substring(0,4);
@@ -498,13 +550,12 @@
                 return { ...ach, current: val };
             });
 
-            // isSelf = false でレンダリング（myTotalPoints を上書きしない）
             renderAchievements(targetAchievementData, false);
         };
 
         const renderRanking = async () => {
             const list = document.getElementById('ranking-list');
-            if (!list || !db) return;
+            if (!list || !db || !auth.currentUser) return;
             try {
                 const statsCol = collection(db, 'artifacts', APP_ID, 'public', 'data', 'userStats');
                 const snapshot = await getDocs(statsCol);
@@ -512,7 +563,10 @@
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     let count = 0;
-                    achievementDataMaster.forEach(m => { if (data[m.id] !== undefined && Number(data[m.id]) >= m.requirement) count++; });
+                    achievementDataMaster.forEach(m => {
+                        const req = adminSettings.achievementPoints[m.id] !== undefined ? adminSettings.achievementPoints[m.id] : m.requirement;
+                        if (data[m.id] !== undefined && Number(data[m.id]) >= req) count++; 
+                    });
                     rankingData.push({ id: docSnap.id, count, name: data.userName || 'Unknown User', avatar: data.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png', rawData: data });
                 });
                 rankingData.sort((a, b) => b.count - a.count);
@@ -544,14 +598,10 @@
             if (!grid) return;
             grid.innerHTML = '';
             
-            // 常に自分の確定ポイントを表示
             const shopPointsEl = document.getElementById('shop-current-points');
             if (shopPointsEl) shopPointsEl.innerText = `${myTotalPoints.toLocaleString()}pt`;
 
-            const shopItems = [
-                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500" },
-                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500" }
-            ];
+            const shopItems = adminSettings.shopItems;
 
             shopItems.forEach(item => {
                 const canBuy = myTotalPoints >= item.price;
@@ -578,16 +628,15 @@
                         alert(`「${item.title}」を交換しようとしました。\n※これはデモ画面です。実際の交換機能は未実装です。`);
                     };
                 }
-                
                 grid.appendChild(card);
             });
         };
 
         const init = async () => {
+            // UIイベントの設定
             const tabAch = document.getElementById('tab-achievements');
             const tabRank = document.getElementById('tab-ranking');
             const tabShop = document.getElementById('tab-shop');
-            
             const secAch = document.getElementById('section-achievements');
             const secRank = document.getElementById('section-ranking');
             const secShop = document.getElementById('section-shop');
@@ -601,7 +650,6 @@
                 tabRank.className = inactiveTabClass;
                 tabShop.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'achievements';
-                
                 if (currentUserData) {
                     const fullName = currentUserData.global_name || currentUserData.username;
                     const avatarUrl = currentUserData.avatar ? `https://cdn.discordapp.com/avatars/${currentUserData.id}/${currentUserData.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUserData.id)%5}.png`;
@@ -612,8 +660,6 @@
                 } else {
                     document.getElementById('user-profile').classList.add('hidden');
                 }
-                
-                // 自分の実績データで再表示
                 renderAchievements(achievementData, true);
             };
             
@@ -632,7 +678,6 @@
                 tabAch.className = inactiveTabClass;
                 tabRank.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'point shop';
-                // ショップ描画時に強制的に myTotalPoints を最新にしてから表示
                 renderShop();
             };
 
@@ -640,65 +685,214 @@
             document.getElementById('nav-login-btn').onclick = loginAction;
             document.getElementById('modal-login-btn').onclick = loginAction;
 
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                const auth = getAuth(app);
-                await signInAnonymously(auth);
-            } catch (e) { console.error(e); }
+            // 認証プロセスの開始 (RULE 3)
+            const initAuth = async () => {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            };
 
-            const params = new URLSearchParams(window.location.hash.slice(1));
-            const token = params.get('access_token');
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) return;
 
-            if (token) {
-                try {
-                    const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
-                    if (res.ok) {
-                        currentUserData = await res.json();
+                // 管理者設定のリアルタイムリッスン
+                const adminDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'adminSettings', 'masterConfig');
+                onSnapshot(adminDocRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.shopItems) adminSettings.shopItems = data.shopItems;
+                        if (data.achievementPoints) adminSettings.achievementPoints = data.achievementPoints;
                         
-                        document.getElementById('login-modal').classList.add('hidden');
-                        document.getElementById('user-profile').classList.remove('hidden');
-                        
-                        const fullName = currentUserData.global_name || currentUserData.username;
-                        const avatarUrl = currentUserData.avatar ? `https://cdn.discordapp.com/avatars/${currentUserData.id}/${currentUserData.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUserData.id)%5}.png`;
-
-                        document.getElementById('user-name').childNodes[0].textContent = fullName + " ";
-                        document.getElementById('user-id-suffix').innerText = currentUserData.id.substring(0,4);
-                        document.getElementById('user-avatar').src = avatarUrl;
-                        document.getElementById('sidebar-avatar').src = avatarUrl;
-                        document.getElementById('sidebar-name').innerText = fullName;
-
-                        const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
-                        onSnapshot(statsDocRef, (snapshot) => {
-                            if (snapshot.exists()) {
-                                const data = snapshot.data();
-                                achievementData = achievementData.map(ach => {
-                                    const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
-                                    if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) showToast(ach.title);
-                                    return { ...ach, current: newVal };
-                                });
-                                // 自分自身のデータを監視しているので、常に reflects myTotalPoints
-                                const currentHeader = document.getElementById('header-title').innerText;
-                                if (currentHeader === 'achievements') {
-                                    // 自分が自分のページを見ていれば更新
-                                    const isViewingSelf = document.getElementById('user-name').innerText.includes(fullName);
-                                    if (isViewingSelf) renderAchievements(achievementData, true);
-                                } else if (currentHeader === 'point shop') {
-                                    // ショップを開いていたらポイント表示のみ更新
-                                    renderAchievements(achievementData, true); 
-                                    renderShop();
-                                } else {
-                                    // 裏で計算だけしておく
-                                    renderAchievements(achievementData, true); 
-                                }
-                            }
-                        });
+                        const currentHeader = document.getElementById('header-title').innerText;
+                        if (currentHeader === 'achievements') renderAchievements(achievementData, true);
+                        if (currentHeader === 'point shop') renderShop();
                     }
-                } catch (err) { console.error(err); }
-            }
+                }, (err) => console.error("Admin Settings Error:", err));
+
+                // Discordログイン後の処理
+                const params = new URLSearchParams(window.location.hash.slice(1));
+                const token = params.get('access_token');
+                if (token) {
+                    try {
+                        const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
+                        if (res.ok) {
+                            currentUserData = await res.json();
+                            document.getElementById('login-modal').classList.add('hidden');
+                            document.getElementById('user-profile').classList.remove('hidden');
+                            
+                            const fullName = currentUserData.global_name || currentUserData.username;
+                            const avatarUrl = currentUserData.avatar ? `https://cdn.discordapp.com/avatars/${currentUserData.id}/${currentUserData.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUserData.id)%5}.png`;
+
+                            document.getElementById('user-name').childNodes[0].textContent = fullName + " ";
+                            document.getElementById('user-id-suffix').innerText = currentUserData.id.substring(0,4);
+                            document.getElementById('user-avatar').src = avatarUrl;
+                            document.getElementById('sidebar-avatar').src = avatarUrl;
+                            document.getElementById('sidebar-name').innerText = fullName;
+
+                            // 自分の統計データの監視
+                            const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
+                            onSnapshot(statsDocRef, (snapshot) => {
+                                if (snapshot.exists()) {
+                                    const data = snapshot.data();
+                                    achievementData = achievementData.map(ach => {
+                                        const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
+                                        const req = adminSettings.achievementPoints[ach.id] !== undefined ? adminSettings.achievementPoints[ach.id] : ach.requirement;
+                                        if (newVal >= req && ach.current < req && ach.current !== 0) showToast(ach.title);
+                                        return { ...ach, current: newVal };
+                                    });
+                                    
+                                    const currentHeader = document.getElementById('header-title').innerText;
+                                    if (currentHeader === 'achievements') {
+                                        const isViewingSelf = document.getElementById('user-name').innerText.includes(fullName);
+                                        if (isViewingSelf) renderAchievements(achievementData, true);
+                                    } else if (currentHeader === 'point shop') {
+                                        renderAchievements(achievementData, true); 
+                                        renderShop();
+                                    } else {
+                                        renderAchievements(achievementData, true); 
+                                    }
+                                }
+                            }, (err) => console.error("User Stats Error:", err));
+                        }
+                    } catch (err) { console.error(err); }
+                }
+            });
+
+            await initAuth();
             renderAchievements(achievementData, true);
         };
+
         init();
+
+        // 管理者モード
+        const adminModal = document.getElementById('admin-modal');
+        let tempShopItems = [];
+        let tempAchievementPoints = {};
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
+                e.preventDefault();
+                openAdminModal();
+            }
+        });
+
+        document.getElementById('admin-close-btn').onclick = () => adminModal.classList.add('hidden');
+        document.getElementById('admin-cancel-btn').onclick = () => adminModal.classList.add('hidden');
+
+        function openAdminModal() {
+            tempShopItems = JSON.parse(JSON.stringify(adminSettings.shopItems));
+            tempAchievementPoints = JSON.parse(JSON.stringify(adminSettings.achievementPoints));
+            renderAdminShopList();
+            renderAdminAchievementList();
+            adminModal.classList.remove('hidden');
+        }
+
+        function renderAdminShopList() {
+            const list = document.getElementById('admin-shop-list');
+            list.innerHTML = '';
+            tempShopItems.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'bg-[#1e1f22] p-3 rounded flex flex-wrap gap-3 items-center border border-[#1f2023] relative';
+                row.innerHTML = `
+                    <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                        <input type="text" placeholder="ID" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="id">
+                        <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="title">
+                        <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="price">
+                        <input type="text" placeholder="アイコン" value="${item.icon}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="icon">
+                        <input type="text" placeholder="色クラス" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="color">
+                        <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full sm:col-span-2 lg:col-span-5" data-index="${index}" data-field="desc">
+                    </div>
+                    <button class="shop-del-btn text-red-400 hover:text-red-500 p-2 h-fit" data-index="${index}"><i class="fas fa-trash"></i></button>
+                `;
+                list.appendChild(row);
+            });
+
+            document.querySelectorAll('.shop-input').forEach(input => {
+                input.onchange = (e) => {
+                    const idx = e.target.dataset.index;
+                    const field = e.target.dataset.field;
+                    let val = e.target.value;
+                    if(field === 'price') val = Number(val);
+                    tempShopItems[idx][field] = val;
+                };
+            });
+            document.querySelectorAll('.shop-del-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    const idx = e.currentTarget.dataset.index;
+                    tempShopItems.splice(idx, 1);
+                    renderAdminShopList();
+                };
+            });
+        }
+
+        document.getElementById('admin-add-shop-btn').onclick = () => {
+            tempShopItems.push({ id: `item_${Date.now()}`, title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white" });
+            renderAdminShopList();
+        };
+
+        function renderAdminAchievementList() {
+            const list = document.getElementById('admin-achievement-list');
+            list.innerHTML = '';
+            achievementDataMaster.forEach(ach => {
+                const currentPt = tempAchievementPoints[ach.id] !== undefined ? tempAchievementPoints[ach.id] : ach.requirement;
+                const div = document.createElement('div');
+                div.className = 'bg-[#1e1f22] p-2 rounded flex justify-between items-center border border-[#1f2023]';
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden mr-2">
+                        <i class="fas ${ach.icon} ${ach.color} w-5 text-center shrink-0"></i>
+                        <span class="text-sm text-white truncate" title="${ach.title}">${ach.title}</span>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <input type="number" class="ach-pt-input bg-[#2b2d31] text-white p-1 rounded text-right w-20 text-sm focus:ring-1 focus:ring-discord-blue outline-none" value="${currentPt}" data-id="${ach.id}">
+                        <span class="text-xs text-text-muted">pt</span>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+
+            document.querySelectorAll('.ach-pt-input').forEach(input => {
+                input.onchange = (e) => {
+                    const id = e.target.dataset.id;
+                    const val = Number(e.target.value);
+                    const originalPt = achievementDataMaster.find(a => a.id === id).requirement;
+                    if (val !== originalPt) {
+                        tempAchievementPoints[id] = val;
+                    } else {
+                        delete tempAchievementPoints[id];
+                    }
+                };
+            });
+        }
+
+        document.getElementById('admin-save-btn').onclick = async () => {
+            if (!auth.currentUser) { alert("データベースに接続されていません。"); return; }
+            const btn = document.getElementById('admin-save-btn');
+            const originalText = btn.innerText;
+            btn.innerText = "保存中...";
+            btn.disabled = true;
+            try {
+                const sanitizedAchievementPoints = {};
+                for (const key in tempAchievementPoints) {
+                    sanitizedAchievementPoints[key] = Number(tempAchievementPoints[key]);
+                }
+
+                const adminDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'adminSettings', 'masterConfig');
+                await setDoc(adminDocRef, {
+                    shopItems: tempShopItems,
+                    achievementPoints: sanitizedAchievementPoints
+                }, { merge: true });
+                
+                adminModal.classList.add('hidden');
+            } catch (err) {
+                console.error(err);
+                alert("保存に失敗しました。権限またはネットワークを確認してください。");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        };
     </script>
 </body>
 </html>
