@@ -615,14 +615,17 @@
             grid.innerHTML = '';
             
             try {
-                const purchasesAllQuery = collectionGroup(db, 'purchases');
-                const allSnap = await getDocs(purchasesAllQuery);
+                // 全体制限（グローバル）の計算を正常化するため、パブリックコレクションを参照するよう変更
+                const globalPurchasesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'globalPurchases');
+                const allSnap = await getDocs(globalPurchasesRef);
                 globalPurchasesCount = {};
                 allSnap.forEach(d => {
                     const data = d.data();
                     globalPurchasesCount[data.itemId] = (globalPurchasesCount[data.itemId] || 0) + 1;
                 });
-            } catch(e) {}
+            } catch(e) {
+                console.error("Global purchases fetch error:", e);
+            }
 
             const currentPoints = Math.max(0, myTotalPoints - mySpentPoints);
             const shopPointsEl = document.getElementById('shop-current-points');
@@ -641,8 +644,14 @@
                 const isLimitReached = limit !== -1 && currentCount >= limit;
                 const canBuy = currentPoints >= item.price && !isLimitReached;
                 
-                const isUrlItem = item.id.startsWith('url_');
-                const rewardUrl = isUrlItem ? item.id.substring(4) : '';
+                // URLアイテムの判定緩和（httpから始まるIDもURLとみなす）
+                const isUrlItem = item.id.startsWith('url_') || item.id.startsWith('http');
+                let rewardUrl = '';
+                if (item.id.startsWith('url_')) {
+                    rewardUrl = item.id.substring(4);
+                } else if (item.id.startsWith('http')) {
+                    rewardUrl = item.id;
+                }
 
                 let btnText = '交換する';
                 if (isLimitReached) {
@@ -655,11 +664,11 @@
                 card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] ${canBuy ? 'hover:border-discord-blue/50' : 'opacity-80'} transition-colors relative`;
                 
                 let urlBtnHtml = '';
-                if (myCount > 0 && isUrlItem) {
+                if (myCount > 0 && isUrlItem && rewardUrl) {
                     urlBtnHtml = `<button onclick="window.open('${rewardUrl}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
                 }
 
-                const limitLabel = limit === -1 ? '無制限' : (limitType === "global" ? `在庫: ${limit - totalCount}` : `残り: ${limit - myCount}回`);
+                const limitLabel = limit === -1 ? '無制限' : (limitType === "global" ? `在庫: ${Math.max(0, limit - totalCount)}` : `残り: ${Math.max(0, limit - myCount)}回`);
 
                 card.innerHTML = `
                     <div class="flex items-start space-x-3 mb-3">
@@ -864,39 +873,57 @@
             btn.disabled = true;
             btn.innerText = "処理中...";
 
-            const performSuccessAction = () => {
-                document.getElementById('custom-confirm-modal').classList.add('hidden');
-                showToast(`「${item.title}」を交換しました`);
-
-                if (item.id.startsWith('url_')) {
-                    const rewardUrl = item.id.substring(4);
-                    document.getElementById('reward-url-link').href = rewardUrl;
-                    document.getElementById('reward-url-link').innerText = rewardUrl;
-                    document.getElementById('url-modal').classList.remove('hidden');
-                }
-            };
-
             const purchaseRecord = { 
                 itemId: item.id, 
                 price: item.price, 
                 timestamp: new Date().getTime(),
-                localId: 'loc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+                localId: 'loc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                userId: auth.currentUser.uid // 全体制限集計などに利用可能
             };
             
-            localPurchases.push(purchaseRecord);
-            mySpentPoints += item.price;
-            myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
-            globalPurchasesCount[item.id] = (globalPurchasesCount[item.id] || 0) + 1;
-
-            performSuccessAction();
-            const currentHeader = document.getElementById('header-title').innerText;
-            if (currentHeader === 'point shop') renderShop();
-
             try {
+                // 購入成功と失敗を統合：Firestoreへの書き込みが完了した時だけ成功とみなす
+                
+                // 1. 個人の購入履歴に保存
                 const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
                 await addDoc(userRef, purchaseRecord);
+                
+                // 2. 全体在庫（全体制限）管理のためにパブリックコレクションにも保存
+                const globalRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'globalPurchases');
+                await addDoc(globalRef, purchaseRecord);
+
+                // 両方の保存が成功した場合のみ、ローカルUIの状態を成功として更新
+                localPurchases.push(purchaseRecord);
+                mySpentPoints += item.price;
+                myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
+                globalPurchasesCount[item.id] = (globalPurchasesCount[item.id] || 0) + 1;
+
+                document.getElementById('custom-confirm-modal').classList.add('hidden');
+                showToast(`「${item.title}」を交換しました`);
+
+                // URL表示ロジックの改善
+                const isUrlItem = item.id.startsWith('url_') || item.id.startsWith('http');
+                let rewardUrl = '';
+                if (item.id.startsWith('url_')) {
+                    rewardUrl = item.id.substring(4);
+                } else if (item.id.startsWith('http')) {
+                    rewardUrl = item.id;
+                }
+
+                if (isUrlItem && rewardUrl) {
+                    document.getElementById('reward-url-link').href = rewardUrl;
+                    document.getElementById('reward-url-link').innerText = rewardUrl;
+                    document.getElementById('url-modal').classList.remove('hidden');
+                }
+
+                const currentHeader = document.getElementById('header-title').innerText;
+                if (currentHeader === 'point shop') renderShop();
+
             } catch (err) {
-                console.error("Purchase error (fallback active)", err);
+                // エラー時の処理（通信エラーなどで失敗した場合のフォールバック）
+                console.error("Purchase error", err);
+                document.getElementById('custom-confirm-modal').classList.add('hidden');
+                showToast("通信エラーが発生しました。交換に失敗しました。");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "交換する";
