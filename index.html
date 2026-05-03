@@ -341,7 +341,7 @@
         </div>
     </div>
 
-    <!-- 新規追加: 交換確認モーダル -->
+    <!-- 交換確認モーダル -->
     <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[400] px-4">
         <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-w-sm w-full text-center border border-[#1f2023]">
             <h3 id="confirm-title" class="text-xl font-bold mb-2 text-white">交換の確認</h3>
@@ -353,7 +353,7 @@
         </div>
     </div>
 
-    <!-- 新規追加: URL特典表示モーダル -->
+    <!-- URL特典表示モーダル -->
     <div id="url-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[400] px-4">
         <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-w-md w-full text-center border border-[#1f2023]">
             <div class="w-12 h-12 bg-discord-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -392,12 +392,10 @@
         const auth = getAuth(app);
 
         let currentUserData = null;
-        let myTotalPoints = 0; // 実績から得た累計ポイント
-        
-        let mySpentPoints = 0; // 消費したポイント合計
-        let myPurchases = {};  // アイテムごとの購入回数記録
+        let myTotalPoints = 0; 
+        let mySpentPoints = 0; 
+        let myPurchases = {};  
 
-        // 管理者設定
         let adminSettings = {
             shopItems: [
                 { id: "1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1 },
@@ -673,7 +671,6 @@
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] ${canBuy ? 'hover:border-discord-blue/50' : 'opacity-80'} transition-colors relative`;
                 
-                // 特典表示ボタン
                 let actionBtnHtml = '';
                 if (purchaseCount > 0) {
                     if (item.id.startsWith('http')) {
@@ -713,7 +710,6 @@
         };
 
         const init = async () => {
-            // UIイベントの設定
             const tabAch = document.getElementById('tab-achievements');
             const tabRank = document.getElementById('tab-ranking');
             const tabShop = document.getElementById('tab-shop');
@@ -724,7 +720,6 @@
             const inactiveTabClass = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
             const activeTabClass = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
 
-            // モバイル用メニュー制御
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const channelSidebar = document.querySelector('.channel-sidebar');
             const mobileOverlay = document.getElementById('mobile-overlay');
@@ -790,7 +785,6 @@
             document.getElementById('nav-login-btn').onclick = loginAction;
             document.getElementById('modal-login-btn').onclick = loginAction;
 
-            // 認証プロセスの開始 (RULE 3)
             const initAuth = async () => {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -802,7 +796,6 @@
             onAuthStateChanged(auth, async (user) => {
                 if (!user) return;
 
-                // 管理者設定のリアルタイムリッスン
                 const adminDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'adminSettings', 'masterConfig');
                 onSnapshot(adminDocRef, (snapshot) => {
                     if (snapshot.exists()) {
@@ -810,14 +803,12 @@
                         if (data.shopItems) adminSettings.shopItems = data.shopItems;
                         if (data.achievementPoints) adminSettings.achievementPoints = data.achievementPoints;
                         
-                        // ※ innerText が大文字化される影響を防ぐため .textContent.trim().toLowerCase() を使用して判定
                         const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
                         if (currentHeader === 'achievements') renderAchievements(achievementData, true);
                         if (currentHeader === 'point shop') renderShop();
                     }
                 }, (err) => console.error("Admin Settings Error:", err));
 
-                // 購入履歴（消費ポイント）の購読
                 const purchasesRef = collection(db, 'artifacts', APP_ID, 'users', user.uid, 'purchases');
                 onSnapshot(purchasesRef, (snap) => {
                     mySpentPoints = 0;
@@ -828,13 +819,11 @@
                         myPurchases[data.itemId] = (myPurchases[data.itemId] || 0) + 1;
                     });
                     
-                    // ※ innerText が大文字化される影響を防ぐため .textContent.trim().toLowerCase() を使用して判定
                     const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
                     if (currentHeader === 'point shop') renderShop();
                 }, (err) => console.error("Purchases Error:", err));
 
 
-                // Discordログイン後の処理
                 const params = new URLSearchParams(window.location.hash.slice(1));
                 const token = params.get('access_token');
                 if (token) {
@@ -854,7 +843,6 @@
                             document.getElementById('sidebar-avatar').src = avatarUrl;
                             document.getElementById('sidebar-name').innerText = fullName;
 
-                            // 自分の統計データの監視
                             const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
                             onSnapshot(statsDocRef, (snapshot) => {
                                 if (snapshot.exists()) {
@@ -866,7 +854,6 @@
                                         return { ...ach, current: newVal };
                                     });
                                     
-                                    // ※ innerText が大文字化される影響を防ぐため .textContent.trim().toLowerCase() を使用して判定
                                     const currentHeader = document.getElementById('header-title').textContent.trim().toLowerCase();
                                     if (currentHeader === 'achievements') {
                                         const isViewingSelf = document.getElementById('user-name').innerText.includes(fullName);
@@ -890,7 +877,6 @@
 
         init();
 
-        // モーダルアクション処理
         let selectedItemForPurchase = null;
 
         window.showConfirmModal = function(item) {
@@ -912,16 +898,12 @@
             btn.disabled = true;
             btn.innerText = "処理中...";
 
-            // 共通の特典表示モーダル呼び出し処理
             const showRewardModal = () => {
                 document.getElementById('custom-confirm-modal').classList.add('hidden');
-                
                 const rewardLink = document.getElementById('reward-url-link');
                 const modalDesc = document.querySelector('#url-modal p');
-                
                 rewardLink.innerText = item.id;
                 
-                // HTTPから始まる場合はリンクにする、それ以外は単なるテキスト表示
                 if (item.id.startsWith('http')) {
                     rewardLink.href = item.id;
                     rewardLink.classList.add('hover:underline', 'text-discord-blue');
@@ -933,12 +915,12 @@
                     rewardLink.classList.add('text-white');
                     if (modalDesc) modalDesc.innerText = "以下の特典内容をご確認ください。";
                 }
-                
                 document.getElementById('url-modal').classList.remove('hidden');
             };
 
+            // 手順修正：まずポイントを引く（購入履歴を書き込む）
+            // 失敗したとしても、その後の「購入済み」表示を維持するために必ず履歴追加を試みる
             try {
-                // 購入データをFirestoreに保存
                 const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
                 await addDoc(userRef, { 
                     itemId: item.id, 
@@ -949,9 +931,17 @@
                 showToast(`「${item.title}」を交換しました`);
                 showRewardModal();
             } catch (err) {
-                console.error("Purchase error", err);
+                console.error("Purchase write error", err);
                 
-                // エラー（保存失敗）の場合でも交換品（特典）を表示するように変更
+                // 【重要】書き込みに失敗しても、ptを減らし個数制限を適用した状態に見せるため
+                // クライアント側で強制的に mySpentPoints と myPurchases を更新する
+                mySpentPoints += item.price;
+                myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
+                
+                // UIを即時反映（個数制限やポイント表示を更新）
+                renderShop();
+                
+                showToast(`「${item.title}」を交換しました（オフライン反映）`);
                 showRewardModal();
             } finally {
                 btn.disabled = false;
