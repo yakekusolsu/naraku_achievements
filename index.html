@@ -192,7 +192,6 @@
                     <i class="fas fa-chart-line text-sm w-5 text-center"></i>
                     <span class="text-[15px] font-medium">ランキング</span>
                 </div>
-                <!-- 新規追加：ポイントショップタブ -->
                 <div id="tab-shop" class="hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition">
                     <i class="fas fa-store text-sm w-5 text-center"></i>
                     <span class="text-[15px] font-medium">ポイントショップ</span>
@@ -252,14 +251,14 @@
                 </div>
             </div>
 
-            <!-- 新規追加：ポイントショップセクション -->
+            <!-- ポイントショップセクション -->
             <div id="section-shop" class="hidden p-4 md:p-8">
                 <div class="max-w-6xl mx-auto">
                     <div class="mb-10 text-center md:text-left">
                         <h2 class="text-3xl font-bold text-white">ポイントショップ</h2>
                         <p class="text-text-muted mt-1">獲得した実績ポイントを使って特別なアイテムや権利を交換しよう</p>
                         <div class="mt-4 inline-flex items-center bg-bg-card border border-[#1f2023] rounded-lg px-4 py-2 shadow-sm">
-                            <span class="text-sm font-bold text-text-muted uppercase tracking-wider">所持ポイント:</span>
+                            <span class="text-sm font-bold text-text-muted uppercase tracking-wider">あなたの所持ポイント:</span>
                             <span id="shop-current-points" class="ml-3 text-xl font-bold text-yellow-400">0pt</span>
                         </div>
                     </div>
@@ -303,13 +302,13 @@
 
         let db = null;
         let currentUserData = null;
-        let currentTotalPoints = 0; // 追加：ショップ判定用の現在のポイント
+        let myTotalPoints = 0; // 修正：ログインユーザー本人の確定ポイントのみを保持
 
         const achievementDataMaster = [
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
             { id: "talker_1", title: "おしゃべり好き Lv.1", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000 },
             { id: "talker_2", title: "おしゃべり好き Lv.2", desc: "合計5,000メッセージを送信する", icon: "fa-comments", color: "text-green-500", requirement: 5000 },
-            { id: "talker_3", title: "おしゃべり好き Lv.3", desc: "合計10,000メッセージを送信する", icon: "fa-comments", color: "text-emerald-400", requirement: 10000 },
+            { id: "talker_3", title: "おしゃべり好き Lv.3", desc: "合計10,000メッセージを送信する", icon: "fa-emerald-400", requirement: 10000 },
             { id: "talker_4", title: "おしゃべり好き Lv.4", desc: "合計50,000メッセージを送信する", icon: "fa-comments", color: "text-emerald-500", requirement: 50000 },
             { id: "talker_5", title: "おしゃべり好き Lv.5", desc: "合計100,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 100000 },
             { id: "talker_6", title: "おしゃべり好き Lv.6", desc: "合計300,000メッセージを送信する", icon: "fa-crown", color: "text-yellow-400", requirement: 300000 },
@@ -417,20 +416,19 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
         }
 
-        // 引数で渡されたデータをレンダリングするように変更（デフォルトは自分のデータ）
-        const renderAchievements = (dataToRender = achievementData) => {
+        const renderAchievements = (dataToRender = achievementData, isSelf = true) => {
             const grid = document.getElementById('achievements-grid');
             if(!grid) return;
             grid.innerHTML = '';
             
             let unlockedCount = 0;
-            let totalPoints = 0;
+            let displayPoints = 0;
 
             dataToRender.forEach(ach => {
                 const isUnlocked = ach.current >= ach.requirement;
                 if (isUnlocked) {
                     unlockedCount++;
-                    totalPoints += ach.requirement;
+                    displayPoints += ach.requirement;
                 }
 
                 const progressPercent = Math.min(100, (ach.current / ach.requirement) * 100);
@@ -461,19 +459,17 @@
                 grid.appendChild(card);
             });
 
-            currentTotalPoints = totalPoints; // ショップ判定用にも保存
+            // 修正：自分自身のデータレンダリング時のみポイント変数を確定
+            if (isSelf) {
+                myTotalPoints = displayPoints;
+            }
             
-            document.getElementById('total-points').innerText = `${totalPoints.toLocaleString()}pt`;
+            document.getElementById('total-points').innerText = `${displayPoints.toLocaleString()}pt`;
             document.getElementById('completion-count').innerText = unlockedCount;
             document.getElementById('total-count').innerText = achievementDataMaster.length;
             document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementDataMaster.length) * 100)}%`;
-            
-            // ショップのポイント表示も更新
-            const shopPointsEl = document.getElementById('shop-current-points');
-            if (shopPointsEl) shopPointsEl.innerText = `${totalPoints.toLocaleString()}pt`;
         };
 
-        // 他人の実績一覧を表示する関数
         const showUserAchievements = (targetId, targetName, targetAvatar, targetData) => {
             const secAch = document.getElementById('section-achievements');
             const secRank = document.getElementById('section-ranking');
@@ -482,7 +478,6 @@
             const tabRank = document.getElementById('tab-ranking');
             const tabShop = document.getElementById('tab-shop');
 
-            // 画面を実績一覧に切り替え
             secAch.classList.remove('hidden'); 
             secRank.classList.add('hidden');
             secShop.classList.add('hidden');
@@ -493,20 +488,18 @@
             
             document.getElementById('header-title').innerText = `${targetName}'s achievements`;
 
-            // プロフィール情報の書き換え
             document.getElementById('user-profile').classList.remove('hidden');
             document.getElementById('user-name').childNodes[0].textContent = targetName + " ";
             document.getElementById('user-id-suffix').innerText = targetId.substring(0,4);
             document.getElementById('user-avatar').src = targetAvatar;
 
-            // 他人の実績データを構築
             const targetAchievementData = achievementDataMaster.map(ach => {
                 const val = targetData[ach.id] !== undefined ? Number(targetData[ach.id]) : 0;
                 return { ...ach, current: val };
             });
 
-            // 他人のデータでレンダリング
-            renderAchievements(targetAchievementData);
+            // isSelf = false でレンダリング（myTotalPoints を上書きしない）
+            renderAchievements(targetAchievementData, false);
         };
 
         const renderRanking = async () => {
@@ -520,7 +513,6 @@
                     const data = docSnap.data();
                     let count = 0;
                     achievementDataMaster.forEach(m => { if (data[m.id] !== undefined && Number(data[m.id]) >= m.requirement) count++; });
-                    // クリック時に渡せるように rawData として保存
                     rankingData.push({ id: docSnap.id, count, name: data.userName || 'Unknown User', avatar: data.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png', rawData: data });
                 });
                 rankingData.sort((a, b) => b.count - a.count);
@@ -529,9 +521,7 @@
                 rankingData.forEach((user, index) => {
                     const rank = index + 1;
                     const item = document.createElement('div');
-                    // cursor-pointer を追加してクリック可能であることを示す
                     item.className = `ranking-item cursor-pointer ${currentUserData && user.id === currentUserData.id ? 'bg-discord-blue/10 border-discord-blue/40 shadow-inner' : ''}`;
-                    // クリックイベントで該当ユーザーの実績を表示
                     item.onclick = () => showUserAchievements(user.id, user.name, user.avatar, user.rawData);
                     
                     let rankBox = rank <= 3 ? `<div class="rank-badge rank-${rank}">${rank}</div>` : `<div class="rank-badge rank-other">${rank}</div>`;
@@ -549,13 +539,15 @@
             } catch (err) { console.error("Ranking Error:", err); }
         };
 
-        // 新規追加：ショップ画面のレンダリング
         const renderShop = () => {
             const grid = document.getElementById('shop-grid');
             if (!grid) return;
             grid.innerHTML = '';
             
-            // ショップアイテムのモックデータ
+            // 常に自分の確定ポイントを表示
+            const shopPointsEl = document.getElementById('shop-current-points');
+            if (shopPointsEl) shopPointsEl.innerText = `${myTotalPoints.toLocaleString()}pt`;
+
             const shopItems = [
                 { id: "role_color", title: "名前の色変更権", desc: "サーバー内での自分の名前の色を好きな色に変更できる権利。", price: 5000, icon: "fa-palette", color: "text-pink-400" },
                 { id: "custom_stamp", title: "カスタムスタンプ追加", desc: "自分の好きな画像をサーバーのスタンプとして1つ追加できる。", price: 10000, icon: "fa-face-laugh-squint", color: "text-yellow-400" },
@@ -566,7 +558,7 @@
             ];
 
             shopItems.forEach(item => {
-                const canBuy = currentTotalPoints >= item.price;
+                const canBuy = myTotalPoints >= item.price;
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] hover:border-discord-blue/50 transition-colors`;
                 card.innerHTML = `
@@ -585,7 +577,6 @@
                     </button>
                 `;
                 
-                // 購入ボタンのデモ処理
                 if(canBuy) {
                     card.querySelector('button').onclick = () => {
                         alert(`「${item.title}」を交換しようとしました。\n※これはデモ画面です。実際の交換機能は未実装です。`);
@@ -615,7 +606,6 @@
                 tabShop.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'achievements';
                 
-                // 他人の実績を見ていた場合、自分の実績表示状態にリセットする
                 if (currentUserData) {
                     const fullName = currentUserData.global_name || currentUserData.username;
                     const avatarUrl = currentUserData.avatar ? `https://cdn.discordapp.com/avatars/${currentUserData.id}/${currentUserData.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUserData.id)%5}.png`;
@@ -624,12 +614,11 @@
                     document.getElementById('user-avatar').src = avatarUrl;
                     document.getElementById('user-profile').classList.remove('hidden');
                 } else {
-                    // ログイン前ならプロフィール非表示
                     document.getElementById('user-profile').classList.add('hidden');
                 }
                 
-                // 自分の実績データでレンダリング
-                renderAchievements();
+                // 自分の実績データで再表示
+                renderAchievements(achievementData, true);
             };
             
             tabRank.onclick = () => {
@@ -641,14 +630,13 @@
                 renderRanking();
             };
 
-            // 新規追加：ショップタブのクリックイベント
             tabShop.onclick = () => {
                 secAch.classList.add('hidden'); secRank.classList.add('hidden'); secShop.classList.remove('hidden');
                 tabShop.className = activeTabClass;
                 tabAch.className = inactiveTabClass;
                 tabRank.className = inactiveTabClass;
                 document.getElementById('header-title').innerText = 'point shop';
-                // 最新のポイント状態でショップを再描画
+                // ショップ描画時に強制的に myTotalPoints を最新にしてから表示
                 renderShop();
             };
 
@@ -672,7 +660,6 @@
                     if (res.ok) {
                         currentUserData = await res.json();
                         
-                        // ログイン成功直後にプロフィール表示を更新
                         document.getElementById('login-modal').classList.add('hidden');
                         document.getElementById('user-profile').classList.remove('hidden');
                         
@@ -685,35 +672,35 @@
                         document.getElementById('sidebar-avatar').src = avatarUrl;
                         document.getElementById('sidebar-name').innerText = fullName;
 
-                        // UIを即座に再描画
-                        renderAchievements();
-                        
-                        // Firestore監視開始
                         const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
                         onSnapshot(statsDocRef, (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
                                 achievementData = achievementData.map(ach => {
                                     const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
-                                    // セッション開始後に実績が解除されたらトーストを表示
                                     if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) showToast(ach.title);
                                     return { ...ach, current: newVal };
                                 });
-                                // 自分の実績を表示している時のみリアルタイム更新を反映
+                                // 自分自身のデータを監視しているので、常に reflects myTotalPoints
                                 const currentHeader = document.getElementById('header-title').innerText;
                                 if (currentHeader === 'achievements') {
-                                    renderAchievements();
+                                    // 自分が自分のページを見ていれば更新
+                                    const isViewingSelf = document.getElementById('user-name').innerText.includes(fullName);
+                                    if (isViewingSelf) renderAchievements(achievementData, true);
                                 } else if (currentHeader === 'point shop') {
-                                    // 裏でポイントが変わった場合のためにショップも裏更新しておく（表示上は切り替え時に再描画される）
-                                    renderAchievements(); // ポイント再計算のため
+                                    // ショップを開いていたらポイント表示のみ更新
+                                    renderAchievements(achievementData, true); 
                                     renderShop();
+                                } else {
+                                    // 裏で計算だけしておく
+                                    renderAchievements(achievementData, true); 
                                 }
                             }
                         });
                     }
                 } catch (err) { console.error(err); }
             }
-            renderAchievements();
+            renderAchievements(achievementData, true);
         };
         init();
     </script>
