@@ -171,13 +171,12 @@
         .medal-icon {
             font-size: 18px;
         }
-
     </style>
 </head>
 <body>
 
     <div class="app-container">
-        <!-- サーバーサイドバー -->
+        <!-- Sidebar and Layout components remain unchanged -->
         <aside class="server-sidebar">
             <div class="server-icon active">
                 <i class="fas fa-ghost text-xl"></i>
@@ -188,7 +187,6 @@
             </div>
         </aside>
 
-        <!-- チャンネルサイドバー -->
         <aside class="channel-sidebar">
             <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm">
                 <span class="font-bold text-white truncate">奈落サーバー</span>
@@ -205,7 +203,6 @@
                     <span class="text-[15px] font-medium">ランキング</span>
                 </div>
             </div>
-            <!-- サイドバー下部ユーザー情報 -->
             <div id="sidebar-user-info" class="bg-[#232428] p-1.5 h-14 flex items-center space-x-2">
                 <div class="relative">
                     <img id="sidebar-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" class="w-8 h-8 rounded-full">
@@ -227,7 +224,6 @@
                 <span id="header-title" class="font-bold text-white uppercase tracking-wide">achievements</span>
             </header>
 
-            <!-- 実績セクション -->
             <div id="section-achievements" class="p-4 md:p-8">
                 <div id="user-profile" class="hidden mb-12 bg-bg-sidebar rounded-lg overflow-hidden border border-[#1f2023]">
                     <div class="h-24 bg-gradient-to-r from-discord-blue to-indigo-600"></div>
@@ -246,31 +242,21 @@
                     </div>
                 </div>
 
-                <div id="achievements-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Javascriptによりカードが注入されます -->
-                </div>
+                <div id="achievements-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
-            <!-- ランキングセクション -->
             <div id="section-ranking" class="hidden p-4 md:p-8">
                 <div class="max-w-4xl mx-auto">
                     <div class="mb-10 text-center md:text-left">
                         <h2 class="text-3xl font-bold text-white">奈落の英雄譚</h2>
                         <p class="text-text-muted mt-1">実績解除数に基づいた全ユーザーのランキングです</p>
                     </div>
-                    
-                    <div id="ranking-list" class="space-y-3">
-                        <div class="flex flex-col items-center py-20 text-text-muted">
-                            <i class="fas fa-circle-notch fa-spin text-3xl mb-4"></i>
-                            <p>深淵のデータを読み込み中...</p>
-                        </div>
-                    </div>
+                    <div id="ranking-list" class="space-y-3"></div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- ログインモーダル -->
     <div id="login-modal" class="fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[100] px-4">
         <div class="bg-bg-sidebar p-8 rounded shadow-2xl max-w-sm w-full text-center">
             <i class="fab fa-discord text-5xl text-discord-blue mb-4"></i>
@@ -284,10 +270,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, getDocs, setDoc, updateDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // 設定 (変更なし)
         const firebaseConfig = {
             apiKey: "AIzaSyDU4KAhuWrDkWAHSQL312F9hd9GULvXfcI",
             authDomain: "naraku-archievements.firebaseapp.com",
@@ -302,9 +287,8 @@
         const APP_ID = 'naraku-achievements'; 
 
         let db = null;
-        let currentUserData = null; // Discordのプロフィールデータ
+        let currentUserData = null;
 
-        // 実績マスタ (変更なし)
         const achievementDataMaster = [
             { id: "step1", title: "奈落への一歩", desc: "サーバーに参加し、最初の挨拶をする", icon: "fa-door-open", color: "text-blue-400", requirement: 1 },
             { id: "talker_1", title: "おしゃべり好き Lv.1", desc: "合計1,000メッセージを送信する", icon: "fa-comments", color: "text-green-400", requirement: 1000 },
@@ -406,7 +390,6 @@
             { id: "boost_max_level", title: "深淵の極致", desc: "サーバーがレベル3の時にブーストを維持する", icon: "fa-angles-up", color: "text-fuchsia-600", requirement: 1 }
         ];
 
-        // 各実績の状態を管理する配列 (マスタをコピー)
         let achievementData = achievementDataMaster.map(a => ({ ...a, current: 0 }));
 
         function showToast(title) {
@@ -422,9 +405,7 @@
             const grid = document.getElementById('achievements-grid');
             if(!grid) return;
             grid.innerHTML = '';
-            
             const unlockedCount = achievementData.filter(a => a.current >= a.requirement).length;
-
             achievementData.forEach(ach => {
                 const isUnlocked = ach.current >= ach.requirement;
                 const progressPercent = Math.min(100, (ach.current / ach.requirement) * 100);
@@ -451,7 +432,6 @@
                 `;
                 grid.appendChild(card);
             });
-
             document.getElementById('completion-count').innerText = unlockedCount;
             document.getElementById('total-count').innerText = achievementData.length;
             document.getElementById('completion-percent').innerText = `${Math.round((unlockedCount / achievementData.length) * 100)}%`;
@@ -460,103 +440,56 @@
         const renderRanking = async () => {
             const list = document.getElementById('ranking-list');
             if (!list || !db) return;
-
             try {
                 const statsCol = collection(db, 'artifacts', APP_ID, 'public', 'data', 'userStats');
                 const snapshot = await getDocs(statsCol);
-                
                 const rankingData = [];
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     let count = 0;
-                    achievementDataMaster.forEach(master => {
-                        if (data[master.id] !== undefined && Number(data[master.id]) >= master.requirement) {
-                            count++;
-                        }
-                    });
-                    rankingData.push({ 
-                        id: docSnap.id, 
-                        count: count, 
-                        name: data.userName || 'Unknown User', 
-                        avatar: data.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png'
-                    });
+                    achievementDataMaster.forEach(m => { if (data[m.id] !== undefined && Number(data[m.id]) >= m.requirement) count++; });
+                    rankingData.push({ id: docSnap.id, count, name: data.userName || 'Unknown User', avatar: data.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png' });
                 });
-
                 rankingData.sort((a, b) => b.count - a.count);
-
-                list.innerHTML = '';
-                
-                if (rankingData.length === 0) {
-                    list.innerHTML = '<p class="text-center py-10 text-text-muted">データが存在しません</p>';
-                    return;
-                }
-
+                list.innerHTML = rankingData.length ? '' : '<p class="text-center py-10 text-text-muted">データが存在しません</p>';
                 rankingData.forEach((user, index) => {
                     const rank = index + 1;
                     const isMe = currentUserData && user.id === currentUserData.id;
                     const item = document.createElement('div');
                     item.className = `ranking-item ${isMe ? 'bg-discord-blue/10 border-discord-blue/40 shadow-inner' : ''}`;
-                    
-                    let rankBox = '';
-                    if(rank === 1) rankBox = `<div class="rank-badge rank-1"><i class="fas fa-crown medal-icon"></i></div>`;
-                    else if(rank === 2) rankBox = `<div class="rank-badge rank-2"><i class="fas fa-medal medal-icon"></i></div>`;
-                    else if(rank === 3) rankBox = `<div class="rank-badge rank-3"><i class="fas fa-medal medal-icon"></i></div>`;
-                    else rankBox = `<div class="rank-badge rank-other">${rank}</div>`;
-
+                    let rankBox = rank <= 3 ? `<div class="rank-badge rank-${rank}"><i class="fas fa-${rank===1?'crown':'medal'} medal-icon"></i></div>` : `<div class="rank-badge rank-other">${rank}</div>`;
                     item.innerHTML = `
                         ${rankBox}
-                        <div class="relative shrink-0">
-                            <img src="${user.avatar}" class="w-10 h-10 rounded-full bg-bg-deep shadow-sm border border-white/5" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="font-bold text-white text-sm truncate flex items-center">
-                                ${user.name}
-                                ${isMe ? '<span class="ml-2 text-[9px] bg-discord-blue text-white px-1.5 py-0.5 rounded font-black tracking-tighter">YOU</span>' : ''}
-                            </p>
-                            <p class="text-[11px] text-text-muted truncate">ID: ${user.id}</p>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-discord-blue font-black text-lg leading-none">${user.count}</div>
-                            <div class="text-[9px] text-text-muted uppercase font-bold tracking-widest">Unlocked</div>
-                        </div>
+                        <div class="relative shrink-0"><img src="${user.avatar}" class="w-10 h-10 rounded-full bg-bg-deep shadow-sm border border-white/5" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'"></div>
+                        <div class="flex-1 min-w-0"><p class="font-bold text-white text-sm truncate flex items-center">${user.name}${isMe ? '<span class="ml-2 text-[9px] bg-discord-blue text-white px-1.5 py-0.5 rounded font-black">YOU</span>' : ''}</p><p class="text-[11px] text-text-muted truncate">ID: ${user.id}</p></div>
+                        <div class="text-right"><div class="text-discord-blue font-black text-lg leading-none">${user.count}</div><div class="text-[9px] text-text-muted uppercase font-bold tracking-widest">Unlocked</div></div>
                     `;
                     list.appendChild(item);
                 });
-            } catch (err) {
-                console.error("Ranking Error:", err);
-                list.innerHTML = '<p class="text-center py-10 text-text-muted">データの取得に失敗しました</p>';
-            }
+            } catch (err) { console.error("Ranking Error:", err); }
         };
 
         const init = async () => {
-            // タブ切り替え処理
             const tabAch = document.getElementById('tab-achievements');
             const tabRank = document.getElementById('tab-ranking');
             const secAch = document.getElementById('section-achievements');
             const secRank = document.getElementById('section-ranking');
 
             tabAch.onclick = () => {
-                secAch.classList.remove('hidden');
-                secRank.classList.add('hidden');
+                secAch.classList.remove('hidden'); secRank.classList.add('hidden');
                 tabAch.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
                 tabRank.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
-                document.getElementById('header-icon').className = 'fas fa-hashtag text-text-muted mr-2 text-xl';
                 document.getElementById('header-title').innerText = 'achievements';
             };
-
             tabRank.onclick = () => {
-                secAch.classList.add('hidden');
-                secRank.classList.remove('hidden');
+                secAch.classList.add('hidden'); secRank.classList.remove('hidden');
                 tabRank.className = 'bg-[#3f4147] text-white px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer';
                 tabAch.className = 'hover:bg-[#35373c] text-text-muted hover:text-[#dbdee1] px-2 py-1.5 rounded flex items-center space-x-2 cursor-pointer transition';
-                document.getElementById('header-icon').className = 'fas fa-chart-line text-text-muted mr-2 text-xl';
                 document.getElementById('header-title').innerText = 'leaderboard';
                 renderRanking();
             };
 
-            const loginAction = () => {
-                window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`;
-            };
+            const loginAction = () => { window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=identify`; };
             document.getElementById('nav-login-btn').onclick = loginAction;
             document.getElementById('modal-login-btn').onclick = loginAction;
 
@@ -565,9 +498,7 @@
                 db = getFirestore(app);
                 const auth = getAuth(app);
                 await signInAnonymously(auth);
-            } catch (e) { 
-                console.error("Firebase Auth Error:", e); 
-            }
+            } catch (e) { console.error(e); }
 
             const params = new URLSearchParams(window.location.hash.slice(1));
             const token = params.get('access_token');
@@ -581,40 +512,41 @@
                         document.getElementById('user-profile').classList.remove('hidden');
                         
                         const fullName = currentUserData.global_name || currentUserData.username;
+                        const avatarUrl = currentUserData.avatar ? `https://cdn.discordapp.com/avatars/${currentUserData.id}/${currentUserData.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUserData.id)%5}.png`;
+
                         document.getElementById('user-name').childNodes[0].textContent = fullName + " ";
                         document.getElementById('user-id-suffix').innerText = currentUserData.id.substring(0,6);
-                        
-                        const avatarUrl = currentUserData.avatar 
-                            ? `https://cdn.discordapp.com/avatars/${currentUserData.id}/${currentUserData.avatar}.png`
-                            : `https://cdn.discordapp.com/embed/avatars/${parseInt(currentUserData.id) % 5}.png`;
-
                         document.getElementById('user-avatar').src = avatarUrl;
                         document.getElementById('sidebar-avatar').src = avatarUrl;
                         document.getElementById('sidebar-name').innerText = fullName;
                         
+                        // 【修正箇所】ログイン時にFirestoreのランキング用データを更新（名前とアバターを同期）
                         const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
+                        try {
+                            // 既存のスコアを壊さないよう、setDocのmergeオプションを使用
+                            await setDoc(statsDocRef, { 
+                                userName: fullName, 
+                                userAvatar: avatarUrl,
+                                lastLogin: new Date().toISOString()
+                            }, { merge: true });
+                        } catch (err) { console.error("Update User Info Error:", err); }
+
                         onSnapshot(statsDocRef, (snapshot) => {
                             if (snapshot.exists()) {
                                 const data = snapshot.data();
                                 achievementData = achievementData.map(ach => {
                                     const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
-                                    // トースト表示ロジック（初回読み込み時は出さないように判定）
-                                    if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) {
-                                        showToast(ach.title);
-                                    }
+                                    if (newVal >= ach.requirement && ach.current < ach.requirement && ach.current !== 0) showToast(ach.title);
                                     return { ...ach, current: newVal };
                                 });
                                 renderAchievements();
                             }
-                        }, (error) => { console.error("Firestore Error:", error); });
+                        });
                     }
-                } catch (err) {
-                    console.error("Discord API Error:", err);
-                }
+                } catch (err) { console.error(err); }
             }
             renderAchievements();
         };
-
         init();
     </script>
 </body>
