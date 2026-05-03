@@ -480,14 +480,15 @@
             let displayPoints = 0;
 
             dataToRender.forEach(ach => {
-                const currentRequirement = adminSettings.achievementPoints[ach.id] !== undefined ? adminSettings.achievementPoints[ach.id] : ach.requirement;
-                const isUnlocked = ach.current >= currentRequirement;
+                const requirement = ach.requirement;
+                const currentPt = adminSettings.achievementPoints[ach.id] !== undefined ? adminSettings.achievementPoints[ach.id] : ach.requirement;
+                const isUnlocked = ach.current >= requirement;
                 if (isUnlocked) {
                     unlockedCount++;
-                    displayPoints += currentRequirement;
+                    displayPoints += currentPt;
                 }
 
-                const progressPercent = Math.min(100, (ach.current / currentRequirement) * 100);
+                const progressPercent = Math.min(100, (ach.current / requirement) * 100);
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col ${!isUnlocked ? 'opacity-50 grayscale' : 'border-discord-blue/20 bg-[#2b2d31]/40'}`;
                 card.innerHTML = `
@@ -499,7 +500,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between">
                                 <h4 class="font-bold text-[#f2f3f5] truncate">${ach.title}</h4>
-                                <span class="text-[10px] font-bold text-text-muted mt-1 shrink-0 ml-1">${currentRequirement}pt</span>
+                                <span class="text-[10px] font-bold text-text-muted mt-1 shrink-0 ml-1">${currentPt}pt</span>
                             </div>
                             <p class="text-[12px] text-text-muted leading-tight mt-1 line-clamp-2">${ach.desc}</p>
                         </div>
@@ -507,7 +508,7 @@
                     <div class="mt-4 space-y-1.5">
                         <div class="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-text-muted">
                             <span>Progress</span>
-                            <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${currentRequirement.toLocaleString()}</span>
+                            <span class="${isUnlocked ? 'text-discord-green' : ''}">${ach.current.toLocaleString()} / ${requirement.toLocaleString()}</span>
                         </div>
                         <div class="progress-bar"><div class="progress-fill ${isUnlocked ? 'bg-discord-green' : ''}" style="width: ${progressPercent}%"></div></div>
                     </div>
@@ -564,7 +565,7 @@
                     const data = docSnap.data();
                     let count = 0;
                     achievementDataMaster.forEach(m => {
-                        const req = adminSettings.achievementPoints[m.id] !== undefined ? adminSettings.achievementPoints[m.id] : m.requirement;
+                        const req = m.requirement;
                         if (data[m.id] !== undefined && Number(data[m.id]) >= req) count++; 
                     });
                     rankingData.push({ id: docSnap.id, count, name: data.userName || 'Unknown User', avatar: data.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png', rawData: data });
@@ -738,7 +739,7 @@
                                     const data = snapshot.data();
                                     achievementData = achievementData.map(ach => {
                                         const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
-                                        const req = adminSettings.achievementPoints[ach.id] !== undefined ? adminSettings.achievementPoints[ach.id] : ach.requirement;
+                                        const req = ach.requirement;
                                         if (newVal >= req && ach.current < req && ach.current !== 0) showToast(ach.title);
                                         return { ...ach, current: newVal };
                                     });
