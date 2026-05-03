@@ -882,17 +882,20 @@
             };
             
             try {
-                // 購入成功と失敗を統合：Firestoreへの書き込みが完了した時だけ成功とみなす
-                
-                // 1. 個人の購入履歴に保存
+                // 1. 個人の購入履歴に保存（ここが成功すれば購入成立とする）
                 const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
                 await addDoc(userRef, purchaseRecord);
                 
                 // 2. 全体在庫（全体制限）管理のためにパブリックコレクションにも保存
-                const globalRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'globalPurchases');
-                await addDoc(globalRef, purchaseRecord);
+                // （環境によって権限エラーで失敗する可能性があるため、個別にcatchして進行を妨げないようにする）
+                try {
+                    const globalRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'globalPurchases');
+                    await addDoc(globalRef, purchaseRecord);
+                } catch (globalErr) {
+                    console.warn("全体在庫の更新に失敗しましたが、個人の購入処理は続行します:", globalErr);
+                }
 
-                // 両方の保存が成功した場合のみ、ローカルUIの状態を成功として更新
+                // ローカルUIの状態を成功として更新
                 localPurchases.push(purchaseRecord);
                 mySpentPoints += item.price;
                 myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
@@ -920,7 +923,7 @@
                 if (currentHeader === 'point shop') renderShop();
 
             } catch (err) {
-                // エラー時の処理（通信エラーなどで失敗した場合のフォールバック）
+                // 個人の購入履歴すら保存できなかった場合のみ通信エラーとする
                 console.error("Purchase error", err);
                 document.getElementById('custom-confirm-modal').classList.add('hidden');
                 showToast("通信エラーが発生しました。交換に失敗しました。");
