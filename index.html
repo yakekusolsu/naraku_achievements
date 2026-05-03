@@ -380,8 +380,8 @@
         // 管理者設定
         let adminSettings = {
             shopItems: [
-                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1, url: "" },
-                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500", limit: 1, url: "" }
+                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1 },
+                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500", limit: 1 }
             ],
             achievementPoints: {}
         };
@@ -644,6 +644,9 @@
                 const isLimitReached = limit !== -1 && purchaseCount >= limit;
                 const canBuy = currentPoints >= item.price && !isLimitReached;
                 
+                const isUrlItem = item.id.startsWith('url_');
+                const rewardUrl = isUrlItem ? item.id.substring(4) : '';
+
                 let btnText = '交換する';
                 if (isLimitReached) {
                     btnText = limit === 1 ? '交換済み' : `上限到達 (${purchaseCount}/${limit})`;
@@ -656,8 +659,8 @@
                 
                 // URL特典ボタン
                 let urlBtnHtml = '';
-                if (purchaseCount > 0 && item.url) {
-                    urlBtnHtml = `<button onclick="window.open('${item.url}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
+                if (purchaseCount > 0 && isUrlItem) {
+                    urlBtnHtml = `<button onclick="window.open('${rewardUrl}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
                 }
 
                 card.innerHTML = `
@@ -867,17 +870,17 @@
                 await addDoc(userRef, { 
                     itemId: item.id, 
                     price: item.price, 
-                    timestamp: new Date().getTime(),
-                    url: item.url || null
+                    timestamp: new Date().getTime()
                 });
                 
                 document.getElementById('custom-confirm-modal').classList.add('hidden');
                 showToast(`「${item.title}」を交換しました`);
 
                 // URLが設定されている場合はURL表示モーダルを出す
-                if (item.url) {
-                    document.getElementById('reward-url-link').href = item.url;
-                    document.getElementById('reward-url-link').innerText = item.url;
+                if (item.id.startsWith('url_')) {
+                    const rewardUrl = item.id.substring(4);
+                    document.getElementById('reward-url-link').href = rewardUrl;
+                    document.getElementById('reward-url-link').innerText = rewardUrl;
                     document.getElementById('url-modal').classList.remove('hidden');
                 }
             } catch (err) {
@@ -925,13 +928,12 @@
                 row.className = 'bg-[#1e1f22] p-3 rounded flex flex-wrap gap-3 items-center border border-[#1f2023] relative';
                 row.innerHTML = `
                     <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
-                        <input type="text" placeholder="ID" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
+                        <input type="text" placeholder="ID (url_https://...でURL機能)" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
                         <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="title">
                         <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="price">
                         <input type="number" placeholder="個数制限(-1で無制限)" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="limit">
                         <input type="text" placeholder="アイコン" value="${item.icon}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="icon">
                         <input type="text" placeholder="色クラス" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="color">
-                        <input type="text" placeholder="交換後URL (任意)" value="${item.url || ''}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-4" data-index="${index}" data-field="url">
                         <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full sm:col-span-2 lg:col-span-6" data-index="${index}" data-field="desc">
                     </div>
                     <button class="shop-del-btn text-red-400 hover:text-red-500 p-2 h-fit" data-index="${index}"><i class="fas fa-trash"></i></button>
@@ -959,7 +961,7 @@
         }
 
         document.getElementById('admin-add-shop-btn').onclick = () => {
-            tempShopItems.push({ id: `item_${Date.now()}`, title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white", limit: -1, url: "" });
+            tempShopItems.push({ id: `item_${Date.now()}`, title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white", limit: -1 });
             renderAdminShopList();
         };
 
