@@ -284,7 +284,7 @@
 
     <!-- Admin Modal -->
     <div id="admin-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[300] flex flex-col p-4 md:p-8 overflow-y-auto">
-        <div class="max-w-5xl w-full mx-auto bg-bg-sidebar rounded-xl shadow-2xl flex flex-col border border-[#1f2023] overflow-hidden">
+        <div class="max-w-6xl w-full mx-auto bg-bg-sidebar rounded-xl shadow-2xl flex flex-col border border-[#1f2023] overflow-hidden">
             <div class="h-14 border-b border-[#1f2023] flex items-center justify-between px-6 bg-[#232428]">
                 <h2 class="text-xl font-bold text-white"><i class="fas fa-hammer text-discord-blue mr-2"></i>管理者コントロールパネル</h2>
                 <button id="admin-close-btn" class="text-text-muted hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
@@ -320,9 +320,36 @@
         </div>
     </div>
 
+    <!-- 新規追加: 交換確認モーダル -->
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[400] px-4">
+        <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-w-sm w-full text-center border border-[#1f2023]">
+            <h3 id="confirm-title" class="text-xl font-bold mb-2 text-white">交換の確認</h3>
+            <p id="confirm-desc" class="text-sm text-text-muted mb-6">本当に交換しますか？</p>
+            <div class="flex gap-3 justify-center">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-[#313338] hover:bg-[#3f4147] text-white rounded text-sm font-bold transition">キャンセル</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 bg-discord-blue hover:bg-[#4752c4] text-white rounded text-sm font-bold transition">交換する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新規追加: URL特典表示モーダル -->
+    <div id="url-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[400] px-4">
+        <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-w-md w-full text-center border border-[#1f2023]">
+            <div class="w-12 h-12 bg-discord-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check text-discord-green text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2 text-white">交換完了！</h3>
+            <p class="text-sm text-text-muted mb-4">以下のURLから特典を受け取ってください。</p>
+            <div class="bg-[#1e1f22] p-3 rounded border border-[#1f2023] mb-6 break-all">
+                <a id="reward-url-link" href="#" target="_blank" class="text-discord-blue hover:underline font-medium text-sm"></a>
+            </div>
+            <button id="url-close-btn" class="px-6 py-2 bg-[#313338] hover:bg-[#3f4147] text-white rounded text-sm font-bold transition w-full">閉じる</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, getDocs, collection, setDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, getDocs, collection, setDoc, query, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // Firebase設定
@@ -344,13 +371,17 @@
         const auth = getAuth(app);
 
         let currentUserData = null;
-        let myTotalPoints = 0;
+        let myTotalPoints = 0; // 実績から得た累計ポイント
+        
+        // --- 新規追加: ショップ用のデータ管理 ---
+        let mySpentPoints = 0; // 消費したポイント合計
+        let myPurchases = {};  // アイテムごとの購入回数記録
 
         // 管理者設定
         let adminSettings = {
             shopItems: [
-                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500" },
-                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500" }
+                { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1, url: "" },
+                { id: "role_1498022247666028674", title: "淫異メンバー", desc: "淫異メンバーロール（ID：1498022247666028674）を付与します。", price: 350000, icon: "fa-heart", color: "text-pink-500", limit: 1, url: "" }
             ],
             achievementPoints: {}
         };
@@ -463,7 +494,7 @@
             if (!container) return;
             const toast = document.createElement('div');
             toast.className = 'bg-[#111214] border-l-4 border-discord-blue p-4 mb-2 shadow-2xl flex items-center space-x-3 min-w-[280px] transition-opacity duration-500 animate-bounce';
-            toast.innerHTML = `<div class="bg-[#f1c40f] p-1.5 rounded-full"><i class="fas fa-trophy text-white text-xs"></i></div> <span class="text-sm font-bold">${title} を解除！</span>`;
+            toast.innerHTML = `<div class="bg-[#f1c40f] p-1.5 rounded-full"><i class="fas fa-trophy text-white text-xs"></i></div> <span class="text-sm font-bold">${title}</span>`;
             container.appendChild(toast);
             setTimeout(() => { 
                 toast.style.opacity = '0'; 
@@ -599,34 +630,59 @@
             if (!grid) return;
             grid.innerHTML = '';
             
+            // --- 変更: 実績獲得pt から 消費分を引いた現在の所持ポイントを計算 ---
+            const currentPoints = Math.max(0, myTotalPoints - mySpentPoints);
+
             const shopPointsEl = document.getElementById('shop-current-points');
-            if (shopPointsEl) shopPointsEl.innerText = `${myTotalPoints.toLocaleString()}pt`;
+            if (shopPointsEl) shopPointsEl.innerText = `${currentPoints.toLocaleString()}pt`;
 
             const shopItems = adminSettings.shopItems;
 
             shopItems.forEach(item => {
-                const canBuy = myTotalPoints >= item.price;
+                const limit = item.limit !== undefined ? Number(item.limit) : -1;
+                const purchaseCount = myPurchases[item.id] || 0;
+                const isLimitReached = limit !== -1 && purchaseCount >= limit;
+                const canBuy = currentPoints >= item.price && !isLimitReached;
+                
+                let btnText = '交換する';
+                if (isLimitReached) {
+                    btnText = limit === 1 ? '交換済み' : `上限到達 (${purchaseCount}/${limit})`;
+                } else if (currentPoints < item.price) {
+                    btnText = 'ポイント不足';
+                }
+
                 const card = document.createElement('div');
-                card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] hover:border-discord-blue/50 transition-colors`;
+                card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] ${canBuy ? 'hover:border-discord-blue/50' : 'opacity-80'} transition-colors relative`;
+                
+                // URL特典ボタン
+                let urlBtnHtml = '';
+                if (purchaseCount > 0 && item.url) {
+                    urlBtnHtml = `<button onclick="window.open('${item.url}', '_blank')" class="mt-2 text-center text-xs text-discord-blue hover:underline py-1 w-full font-medium"><i class="fas fa-external-link-alt mr-1"></i>特典URLを開く</button>`;
+                }
+
                 card.innerHTML = `
                     <div class="flex items-start space-x-3 mb-3">
-                        <div class="w-12 h-12 shrink-0 rounded-lg bg-bg-deep flex items-center justify-center border border-white/5">
+                        <div class="w-12 h-12 shrink-0 rounded-lg bg-bg-deep flex items-center justify-center border border-white/5 relative">
                             <i class="fas ${item.icon} ${item.color} text-2xl"></i>
+                            ${purchaseCount > 0 ? `<div class="absolute -top-1 -right-1 bg-discord-green w-4 h-4 rounded-full border-[2px] border-bg-card flex items-center justify-center"><i class="fas fa-check text-[8px] text-white"></i></div>` : ''}
                         </div>
                         <div class="flex-1 min-w-0">
                             <h4 class="font-bold text-[#f2f3f5] text-sm">${item.title}</h4>
                             <span class="text-[12px] font-bold text-yellow-400 mt-1 inline-block"><i class="fas fa-coins mr-1 text-[10px]"></i>${item.price.toLocaleString()} pt</span>
+                            ${limit !== -1 ? `<span class="ml-2 text-[10px] text-text-muted bg-[#1e1f22] px-1.5 py-0.5 rounded">残り ${limit - purchaseCount}回</span>` : ''}
                         </div>
                     </div>
                     <p class="text-[12px] text-text-muted leading-relaxed mb-4 flex-1">${item.desc}</p>
                     <button class="w-full py-2 rounded text-sm font-bold transition-colors ${canBuy ? 'bg-discord-blue hover:bg-[#4752c4] text-white' : 'bg-[#313338] text-text-muted cursor-not-allowed'}">
-                        ${canBuy ? '交換する' : 'ポイント不足'}
+                        ${btnText}
                     </button>
+                    ${urlBtnHtml}
                 `;
                 
                 if(canBuy) {
-                    card.querySelector('button').onclick = () => {
-                        alert(`「${item.title}」を交換しようとしました。\n※これはデモ画面です。実際の交換機能は未実装です。`);
+                    const btn = card.querySelector('button');
+                    btn.onclick = () => {
+                        showConfirmModal(item);
                     };
                 }
                 grid.appendChild(card);
@@ -712,6 +768,22 @@
                     }
                 }, (err) => console.error("Admin Settings Error:", err));
 
+                // --- 新規追加: 購入履歴（消費ポイント）の購読 ---
+                const purchasesRef = collection(db, 'artifacts', APP_ID, 'users', user.uid, 'purchases');
+                onSnapshot(purchasesRef, (snap) => {
+                    mySpentPoints = 0;
+                    myPurchases = {};
+                    snap.forEach(docSnap => {
+                        const data = docSnap.data();
+                        mySpentPoints += data.price || 0;
+                        myPurchases[data.itemId] = (myPurchases[data.itemId] || 0) + 1;
+                    });
+                    
+                    const currentHeader = document.getElementById('header-title').innerText;
+                    if (currentHeader === 'point shop') renderShop();
+                }, (err) => console.error("Purchases Error:", err));
+
+
                 // Discordログイン後の処理
                 const params = new URLSearchParams(window.location.hash.slice(1));
                 const token = params.get('access_token');
@@ -740,7 +812,7 @@
                                     achievementData = achievementData.map(ach => {
                                         const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
                                         const req = ach.requirement;
-                                        if (newVal >= req && ach.current < req && ach.current !== 0) showToast(ach.title);
+                                        if (newVal >= req && ach.current < req && ach.current !== 0) showToast(`${ach.title} を解除！`);
                                         return { ...ach, current: newVal };
                                     });
                                     
@@ -766,6 +838,61 @@
         };
 
         init();
+
+        // --- 新規追加: モーダルアクション処理 ---
+        let selectedItemForPurchase = null;
+
+        window.showConfirmModal = function(item) {
+            selectedItemForPurchase = item;
+            document.getElementById('confirm-title').innerText = `${item.title} を交換`;
+            document.getElementById('confirm-desc').innerText = `${item.price.toLocaleString()} pt を消費して交換します。よろしいですか？`;
+            document.getElementById('custom-confirm-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('confirm-cancel-btn').onclick = () => {
+            document.getElementById('custom-confirm-modal').classList.add('hidden');
+            selectedItemForPurchase = null;
+        };
+
+        document.getElementById('confirm-ok-btn').onclick = async () => {
+            if (!selectedItemForPurchase || !auth.currentUser) return;
+            const item = selectedItemForPurchase;
+            const btn = document.getElementById('confirm-ok-btn');
+            btn.disabled = true;
+            btn.innerText = "処理中...";
+
+            try {
+                // 購入データをFirestoreに保存
+                const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
+                await addDoc(userRef, { 
+                    itemId: item.id, 
+                    price: item.price, 
+                    timestamp: new Date().getTime(),
+                    url: item.url || null
+                });
+                
+                document.getElementById('custom-confirm-modal').classList.add('hidden');
+                showToast(`「${item.title}」を交換しました`);
+
+                // URLが設定されている場合はURL表示モーダルを出す
+                if (item.url) {
+                    document.getElementById('reward-url-link').href = item.url;
+                    document.getElementById('reward-url-link').innerText = item.url;
+                    document.getElementById('url-modal').classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error("Purchase error", err);
+                alert("交換処理に失敗しました。");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "交換する";
+                selectedItemForPurchase = null;
+            }
+        };
+
+        document.getElementById('url-close-btn').onclick = () => {
+            document.getElementById('url-modal').classList.add('hidden');
+        };
 
         // 管理者モード
         const adminModal = document.getElementById('admin-modal');
@@ -797,13 +924,15 @@
                 const row = document.createElement('div');
                 row.className = 'bg-[#1e1f22] p-3 rounded flex flex-wrap gap-3 items-center border border-[#1f2023] relative';
                 row.innerHTML = `
-                    <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                        <input type="text" placeholder="ID" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="id">
-                        <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="title">
-                        <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="price">
-                        <input type="text" placeholder="アイコン" value="${item.icon}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="icon">
-                        <input type="text" placeholder="色クラス" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="color">
-                        <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full sm:col-span-2 lg:col-span-5" data-index="${index}" data-field="desc">
+                    <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
+                        <input type="text" placeholder="ID" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
+                        <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="title">
+                        <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="price">
+                        <input type="number" placeholder="個数制限(-1で無制限)" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-2" data-index="${index}" data-field="limit">
+                        <input type="text" placeholder="アイコン" value="${item.icon}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="icon">
+                        <input type="text" placeholder="色クラス" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="color">
+                        <input type="text" placeholder="交換後URL (任意)" value="${item.url || ''}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-4" data-index="${index}" data-field="url">
+                        <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full sm:col-span-2 lg:col-span-6" data-index="${index}" data-field="desc">
                     </div>
                     <button class="shop-del-btn text-red-400 hover:text-red-500 p-2 h-fit" data-index="${index}"><i class="fas fa-trash"></i></button>
                 `;
@@ -816,6 +945,7 @@
                     const field = e.target.dataset.field;
                     let val = e.target.value;
                     if(field === 'price') val = Number(val);
+                    if(field === 'limit') val = Number(val);
                     tempShopItems[idx][field] = val;
                 };
             });
@@ -829,7 +959,7 @@
         }
 
         document.getElementById('admin-add-shop-btn').onclick = () => {
-            tempShopItems.push({ id: `item_${Date.now()}`, title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white" });
+            tempShopItems.push({ id: `item_${Date.now()}`, title: "新規アイテム", desc: "説明文", price: 1000, icon: "fa-star", color: "text-white", limit: -1, url: "" });
             renderAdminShopList();
         };
 
