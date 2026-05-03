@@ -176,7 +176,7 @@
 <body>
 
     <div class="app-container">
-        <!-- Sidebar and Layout components remain unchanged -->
+        <!-- Sidebar -->
         <aside class="server-sidebar">
             <div class="server-icon active">
                 <i class="fas fa-ghost text-xl"></i>
@@ -187,6 +187,7 @@
             </div>
         </aside>
 
+        <!-- Channels -->
         <aside class="channel-sidebar">
             <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm">
                 <span class="font-bold text-white truncate">奈落サーバー</span>
@@ -218,6 +219,7 @@
             </div>
         </aside>
 
+        <!-- Main Content -->
         <main class="main-content">
             <header class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm sticky top-0 bg-bg-main z-10">
                 <i id="header-icon" class="fas fa-hashtag text-text-muted mr-2 text-xl"></i>
@@ -257,6 +259,7 @@
         </main>
     </div>
 
+    <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[100] px-4">
         <div class="bg-bg-sidebar p-8 rounded shadow-2xl max-w-sm w-full text-center">
             <i class="fab fa-discord text-5xl text-discord-blue mb-4"></i>
@@ -266,11 +269,12 @@
         </div>
     </div>
 
+    <!-- Toast -->
     <div id="toast-container" class="fixed bottom-16 right-4 z-[200]"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, getDocs, setDoc, updateDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -520,16 +524,16 @@
                         document.getElementById('sidebar-avatar').src = avatarUrl;
                         document.getElementById('sidebar-name').innerText = fullName;
                         
-                        // 【修正箇所】ログイン時にFirestoreのランキング用データを更新（名前とアバターを同期）
+                        // 【修正箇所】ログインしたユーザーの情報をFirestoreの自分のドキュメントに保存（マージ）
+                        // これによりランキングで名前とアイコンが表示されるようになる
                         const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
                         try {
-                            // 既存のスコアを壊さないよう、setDocのmergeオプションを使用
                             await setDoc(statsDocRef, { 
                                 userName: fullName, 
                                 userAvatar: avatarUrl,
                                 lastLogin: new Date().toISOString()
                             }, { merge: true });
-                        } catch (err) { console.error("Update User Info Error:", err); }
+                        } catch (err) { console.error("Update Profile Error:", err); }
 
                         onSnapshot(statsDocRef, (snapshot) => {
                             if (snapshot.exists()) {
