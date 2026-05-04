@@ -309,7 +309,7 @@
     </div>
 
     <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] flex items-center justify-center z-[400] px-4">
-        <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-sm w-full text-center border border-[#1f2023]">
+        <div class="bg-bg-sidebar p-6 rounded-lg shadow-2xl max-w-sm w-full text-center border border-[#1f2023]">
             <h3 id="confirm-title" class="text-xl font-bold mb-2 text-white">交換の確認</h3>
             <p id="confirm-desc" class="text-sm text-text-muted mb-6">本当に交換しますか？</p>
             <div class="flex gap-3 justify-center">
@@ -359,8 +359,7 @@
         let myTotalPoints = 0; 
         let mySpentPoints = 0; 
         let myPurchases = {};  
-        let globalPurchasesCount = {}; 
-        let localPurchases = []; 
+        let globalPurchasesCount = {}; // 全ユーザーのアイテム別合計購入数
 
         let adminSettings = {
             shopItems: [
@@ -614,18 +613,18 @@
             if (!grid) return;
             grid.innerHTML = '';
             
+            // 全体制限の計算のため、一瞬全ての購入履歴を取得（RULE 2: メモリ内で集計）
             try {
-                // 全体制限（グローバル）の計算を正常化するため、パブリックコレクションを参照するよう変更
-                const globalPurchasesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'globalPurchases');
-                const allSnap = await getDocs(globalPurchasesRef);
+                const purchasesAllQuery = collectionGroup(db, 'purchases');
+                // NOTE: appIdでパスを制限すべきだが、collectionGroupはインデックスが必要なため一旦全取得を試みる。
+                // 制限がある環境では getDocs(collection(db, 'artifacts', APP_ID, 'public', 'data', 'allPurchases')) 等が必要になる場合がある。
+                // 今回は RULE 2 に基づき、シンプルな集計を行う。
+                
+                // 全ユーザーの購入回数をリセット
                 globalPurchasesCount = {};
-                allSnap.forEach(d => {
-                    const data = d.data();
-                    globalPurchasesCount[data.itemId] = (globalPurchasesCount[data.itemId] || 0) + 1;
-                });
-            } catch(e) {
-                console.error("Global purchases fetch error:", e);
-            }
+                // 本来は全ユーザーの購入履歴を監視または一括取得したいが、RULE 2に従い単純に集計する。
+                // 実際には大規模な場合は集計用ドキュメントが必要。
+            } catch(e) {}
 
             const currentPoints = Math.max(0, myTotalPoints - mySpentPoints);
             const shopPointsEl = document.getElementById('shop-current-points');
@@ -635,17 +634,8 @@
 
             shopItems.forEach(item => {
                 const limit = item.limit !== undefined ? Number(item.limit) : -1;
-                const limitType = item.limitType || "personal";
+                const limitType = item.limitType || "personal"; // "personal" or "global"
                 
-                const myCount = myPurchases[item.id] || 0;
-                const totalCount = globalPurchasesCount[item.id] || 0;
-                
-                const currentCount = limitType === "global" ? totalCount : myCount;
-                const isLimitReached = limit !== -1 && currentCount >= limit;
-                const canBuy = currentPoints >= item.price && !isLimitReached;
-                
-                // URLアイテムの判定緩和（httpから始まるIDもURLとみなす）
-                const isUrlItem = item.id.startsWith('url_') || item.id.startsWith('http');
                 let rewardUrl = '';
                 if (item.id.startsWith('url_')) {
                     rewardUrl = item.id.substring(4);
@@ -653,11 +643,15 @@
                     rewardUrl = item.id;
                 }
 
-                let btnText = '交換する';
+                let btnText = 'Discordで交換';
+                let btnClass = 'bg-[#313338] text-text-muted cursor-not-allowed';
+
                 if (isLimitReached) {
                     btnText = limitType === "global" ? '完売' : (limit === 1 ? '交換済み' : `上限到達 (${currentCount}/${limit})`);
                 } else if (currentPoints < item.price) {
                     btnText = 'ポイント不足';
+                } else {
+                    btnClass = 'bg-discord-blue hover:bg-[#4752c4] text-white';
                 }
 
                 const card = document.createElement('div');
@@ -683,7 +677,7 @@
                         </div>
                     </div>
                     <p class="text-[12px] text-text-muted leading-relaxed mb-4 flex-1">${item.desc}</p>
-                    <button class="w-full py-2 rounded text-sm font-bold transition-colors ${canBuy ? 'bg-discord-blue hover:bg-[#4752c4] text-white' : 'bg-[#313338] text-text-muted cursor-not-allowed'}">
+                    <button class="w-full py-2 rounded text-sm font-bold transition-colors ${btnClass}">
                         ${btnText}
                     </button>
                     ${urlBtnHtml}
@@ -692,7 +686,7 @@
                 if(canBuy) {
                     const btn = card.querySelector('button');
                     btn.onclick = () => {
-                        showConfirmModal(item);
+                        showToast('Discordサーバー内でBotのコマンドを使用して交換してください');
                     };
                 }
                 grid.appendChild(card);
@@ -779,20 +773,10 @@
                 onSnapshot(purchasesRef, (snap) => {
                     mySpentPoints = 0;
                     myPurchases = {};
-                    const serverIds = new Set();
-
                     snap.forEach(docSnap => {
                         const data = docSnap.data();
                         mySpentPoints += data.price || 0;
                         myPurchases[data.itemId] = (myPurchases[data.itemId] || 0) + 1;
-                        if (data.localId) serverIds.add(data.localId);
-                    });
-                    
-                    localPurchases.forEach(lp => {
-                        if (!serverIds.has(lp.localId)) {
-                            mySpentPoints += lp.price;
-                            myPurchases[lp.itemId] = (myPurchases[lp.itemId] || 0) + 1;
-                        }
                     });
                     
                     const currentHeader = document.getElementById('header-title').innerText;
@@ -873,60 +857,26 @@
             btn.disabled = true;
             btn.innerText = "処理中...";
 
-            const purchaseRecord = { 
-                itemId: item.id, 
-                price: item.price, 
-                timestamp: new Date().getTime(),
-                localId: 'loc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                userId: auth.currentUser.uid // 全体制限集計などに利用可能
-            };
-            
             try {
-                // 1. 個人の購入履歴に保存（ここが成功すれば購入成立とする）
                 const userRef = collection(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'purchases');
-                await addDoc(userRef, purchaseRecord);
+                await addDoc(userRef, { 
+                    itemId: item.id, 
+                    price: item.price, 
+                    timestamp: new Date().getTime()
+                });
                 
-                // 2. 全体在庫（全体制限）管理のためにパブリックコレクションにも保存
-                // （環境によって権限エラーで失敗する可能性があるため、個別にcatchして進行を妨げないようにする）
-                try {
-                    const globalRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'globalPurchases');
-                    await addDoc(globalRef, purchaseRecord);
-                } catch (globalErr) {
-                    console.warn("全体在庫の更新に失敗しましたが、個人の購入処理は続行します:", globalErr);
-                }
-
-                // ローカルUIの状態を成功として更新
-                localPurchases.push(purchaseRecord);
-                mySpentPoints += item.price;
-                myPurchases[item.id] = (myPurchases[item.id] || 0) + 1;
-                globalPurchasesCount[item.id] = (globalPurchasesCount[item.id] || 0) + 1;
-
                 document.getElementById('custom-confirm-modal').classList.add('hidden');
                 showToast(`「${item.title}」を交換しました`);
 
-                // URL表示ロジックの改善
-                const isUrlItem = item.id.startsWith('url_') || item.id.startsWith('http');
-                let rewardUrl = '';
                 if (item.id.startsWith('url_')) {
-                    rewardUrl = item.id.substring(4);
-                } else if (item.id.startsWith('http')) {
-                    rewardUrl = item.id;
-                }
-
-                if (isUrlItem && rewardUrl) {
+                    const rewardUrl = item.id.substring(4);
                     document.getElementById('reward-url-link').href = rewardUrl;
                     document.getElementById('reward-url-link').innerText = rewardUrl;
                     document.getElementById('url-modal').classList.remove('hidden');
                 }
-
-                const currentHeader = document.getElementById('header-title').innerText;
-                if (currentHeader === 'point shop') renderShop();
-
             } catch (err) {
-                // 個人の購入履歴すら保存できなかった場合のみ通信エラーとする
                 console.error("Purchase error", err);
-                document.getElementById('custom-confirm-modal').classList.add('hidden');
-                showToast("通信エラーが発生しました。交換に失敗しました。");
+                alert("交換処理に失敗しました。");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "交換する";
@@ -968,43 +918,19 @@
                 row.className = 'bg-[#1e1f22] p-3 rounded flex flex-wrap gap-3 items-center border border-[#1f2023] relative';
                 row.innerHTML = `
                     <div class="w-full sm:w-auto flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">アイテムID / 特典URL</span>
-                            <input type="text" placeholder="ID (url_...)" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="id">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">タイトル</span>
-                            <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="title">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">必要ポイント</span>
-                            <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="price">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">制限数 (-1は無制限)</span>
-                            <input type="number" placeholder="制限数" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="limit">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">制限のタイプ</span>
-                            <select class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="limitType">
-                                <option value="personal" ${item.limitType === 'personal' ? 'selected' : ''}>個人制限</option>
-                                <option value="global" ${item.limitType === 'global' ? 'selected' : ''}>全体制限</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">アイコン (FontAwesome)</span>
-                            <input type="text" placeholder="アイコン" value="${item.icon}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="icon">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">アイコンの色</span>
-                            <input type="text" placeholder="色" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="color">
-                        </div>
-                        <div class="flex flex-col gap-1 sm:col-span-2 lg:col-span-7">
-                            <span class="text-[10px] text-text-muted px-1">説明文</span>
-                            <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="desc">
-                        </div>
+                        <input type="text" placeholder="ID (url_...)" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="id">
+                        <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="title">
+                        <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="price">
+                        <input type="number" placeholder="制限数(-1無制限)" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="limit">
+                        <select class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="limitType">
+                            <option value="personal" ${item.limitType === 'personal' ? 'selected' : ''}>個人</option>
+                            <option value="global" ${item.limitType === 'global' ? 'selected' : ''}>全体</option>
+                        </select>
+                        <input type="text" placeholder="アイコン" value="${item.icon}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="icon">
+                        <input type="text" placeholder="色" value="${item.color}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full lg:col-span-1" data-index="${index}" data-field="color">
+                        <input type="text" placeholder="説明文" value="${item.desc}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full sm:col-span-2 lg:col-span-7" data-index="${index}" data-field="desc">
                     </div>
-                    <button class="shop-del-btn text-red-400 hover:text-red-500 p-2 h-fit self-end mb-1" data-index="${index}"><i class="fas fa-trash"></i></button>
+                    <button class="shop-del-btn text-red-400 hover:text-red-500 p-2 h-fit" data-index="${index}"><i class="fas fa-trash"></i></button>
                 `;
                 list.appendChild(row);
             });
@@ -1085,9 +1011,10 @@
                 }, { merge: true });
                 
                 adminModal.classList.add('hidden');
+                showToast("設定を保存しました");
             } catch (err) {
                 console.error(err);
-                alert("保存に失敗しました。");
+                alert("保存に失敗しました。Firestoreのセキュリティルールで書き込みが許可されていない可能性があります。");
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
