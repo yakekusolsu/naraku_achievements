@@ -347,6 +347,7 @@
         let currentUserData = null;
         let myTotalPoints = 0; 
         let mySpentPoints = 0; 
+        let legacySpentPoints = 0; // 追加: 古い仕様の消費ポイント
         let myPurchases = {};  
         let globalPurchasesCount = {}; 
         let localPurchases = []; 
@@ -529,7 +530,11 @@
             const totalCountEl = document.getElementById('total-count');
             const compPercentEl = document.getElementById('completion-percent');
 
-            if(totalPointsEl) totalPointsEl.innerText = `${displayPoints.toLocaleString()}pt`;
+            if(totalPointsEl) {
+                // 合計ポイント(所持ポイント)として消費分を引いた額を表示する
+                const currentPts = isSelf ? Math.max(0, displayPoints - mySpentPoints - legacySpentPoints) : displayPoints;
+                totalPointsEl.innerText = `${currentPts.toLocaleString()}pt`;
+            }
             if(compCountEl) compCountEl.innerText = unlockedCount;
             if(totalCountEl) totalCountEl.innerText = achievementDataMaster.length;
             if(compPercentEl) compPercentEl.innerText = `${Math.round((unlockedCount / achievementDataMaster.length) * 100)}%`;
@@ -615,7 +620,8 @@
                 console.error("Global purchases fetch error:", e);
             }
 
-            const currentPoints = Math.max(0, myTotalPoints - mySpentPoints);
+            // 消費ポイントをすべて引くように修正
+            const currentPoints = Math.max(0, myTotalPoints - mySpentPoints - legacySpentPoints);
             const shopPointsEl = document.getElementById('shop-current-points');
             if (shopPointsEl) shopPointsEl.innerText = `${currentPoints.toLocaleString()}pt`;
 
@@ -770,6 +776,7 @@
                     
                     const currentHeader = document.getElementById('header-title').innerText;
                     if (currentHeader === 'point shop') renderShop();
+                    else if (currentHeader === 'achievements') renderAchievements(achievementData, true); // プロフィールのポイントも更新
                 }, (err) => console.error("Purchases Error:", err));
 
                 const params = new URLSearchParams(window.location.hash.slice(1));
@@ -795,6 +802,10 @@
                             onSnapshot(statsDocRef, (snapshot) => {
                                 if (snapshot.exists()) {
                                     const data = snapshot.data();
+                                    
+                                    // 古い仕様の消費ポイントを取得
+                                    legacySpentPoints = data.spentPoints || 0; 
+
                                     achievementData = achievementData.map(ach => {
                                         const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
                                         const req = ach.requirement;
