@@ -352,6 +352,30 @@
         let globalPurchasesCount = {}; 
         let localPurchases = []; 
 
+        // ポイントをFirestoreに同期するための変数と関数
+        let lastSavedTotalPoints = -1;
+        let lastSavedCurrentPoints = -1;
+
+        const syncPointsToFirestore = async () => {
+            if (!auth.currentUser || !currentUserData) return;
+            const currentPts = Math.max(0, myTotalPoints - mySpentPoints - legacySpentPoints);
+            
+            // 既に保存されている値と同じ場合はスキップして無限ループと不要な書き込みを防ぐ
+            if (myTotalPoints === lastSavedTotalPoints && currentPts === lastSavedCurrentPoints) return;
+            
+            try {
+                const statsDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'userStats', currentUserData.id);
+                await setDoc(statsDocRef, {
+                    totalPoints: myTotalPoints,
+                    currentPoints: currentPts
+                }, { merge: true });
+                lastSavedTotalPoints = myTotalPoints;
+                lastSavedCurrentPoints = currentPts;
+            } catch (e) {
+                console.error("Failed to sync points", e);
+            }
+        };
+
         let adminSettings = {
             shopItems: [
                 { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1, limitType: "personal", reward: "1373848568774922374" },
@@ -538,6 +562,11 @@
             if(compCountEl) compCountEl.innerText = unlockedCount;
             if(totalCountEl) totalCountEl.innerText = achievementDataMaster.length;
             if(compPercentEl) compPercentEl.innerText = `${Math.round((unlockedCount / achievementDataMaster.length) * 100)}%`;
+
+            // 実績の計算が完了したタイミングでFirestoreへポイントを同期する
+            if (isSelf && auth.currentUser && currentUserData) {
+                syncPointsToFirestore();
+            }
         };
 
         const showUserAchievements = (targetId, targetName, targetAvatar, targetData) => {
@@ -777,6 +806,9 @@
                     const currentHeader = document.getElementById('header-title').innerText;
                     if (currentHeader === 'point shop') renderShop();
                     else if (currentHeader === 'achievements') renderAchievements(achievementData, true); // プロフィールのポイントも更新
+
+                    // 消費ポイントが更新されたらFirestoreに同期する
+                    syncPointsToFirestore();
                 }, (err) => console.error("Purchases Error:", err));
 
                 const params = new URLSearchParams(window.location.hash.slice(1));
