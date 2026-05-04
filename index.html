@@ -226,7 +226,7 @@
                         <div class="flex-1 text-center md:text-left mt-4 md:mt-0">
                             <h2 id="user-name" class="text-2xl font-bold text-white flex flex-col md:flex-row items-center md:justify-start justify-center">--- <span class="md:ml-2 text-text-muted font-normal text-sm">#<span id="user-id-suffix">0000</span></span></h2>
                             <div class="flex flex-wrap justify-center md:justify-start gap-4 mt-2">
-                                <span class="text-xs font-bold uppercase text-text-muted">合計ポイント: <span id="total-points" class="text-yellow-400">0pt</span></span>
+                                <span class="text-xs font-bold uppercase text-text-muted">所持ポイント: <span id="current-points" class="text-yellow-400">0pt</span> <span class="font-normal normal-case text-[10px] ml-1">(累計: <span id="total-points">0</span>pt)</span></span>
                                 <span class="text-xs font-bold uppercase text-text-muted">実績解除率: <span id="completion-percent" class="text-white">0%</span></span>
                                 <span class="text-xs font-bold uppercase text-text-muted">解除済み: <span id="completion-count" class="text-white">0</span> / <span id="total-count">0</span></span>
                             </div>
@@ -550,14 +550,15 @@
             }
             
             const totalPointsEl = document.getElementById('total-points');
+            const currentPointsEl = document.getElementById('current-points');
             const compCountEl = document.getElementById('completion-count');
             const totalCountEl = document.getElementById('total-count');
             const compPercentEl = document.getElementById('completion-percent');
 
-            if(totalPointsEl) {
-                // 合計ポイント(所持ポイント)として消費分を引いた額を表示する
+            if(totalPointsEl && currentPointsEl) {
                 const currentPts = isSelf ? Math.max(0, displayPoints - mySpentPoints - legacySpentPoints) : displayPoints;
-                totalPointsEl.innerText = `${currentPts.toLocaleString()}pt`;
+                currentPointsEl.innerText = `${currentPts.toLocaleString()}pt`;
+                totalPointsEl.innerText = `${displayPoints.toLocaleString()}`;
             }
             if(compCountEl) compCountEl.innerText = unlockedCount;
             if(totalCountEl) totalCountEl.innerText = achievementDataMaster.length;
