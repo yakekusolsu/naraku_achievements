@@ -630,12 +630,7 @@
             const shopPointsEl = document.getElementById('shop-current-points');
             if (shopPointsEl) shopPointsEl.innerText = `${currentPoints.toLocaleString()}pt`;
 
-            const shopItems = adminSettings.shopItems;
-
-            shopItems.forEach(item => {
-                const limit = item.limit !== undefined ? Number(item.limit) : -1;
-                const limitType = item.limitType || "personal"; // "personal" or "global"
-                
+            const isUrlItem = item.id.startsWith('url_') || item.id.startsWith('http');
                 let rewardUrl = '';
                 if (item.id.startsWith('url_')) {
                     rewardUrl = item.id.substring(4);
