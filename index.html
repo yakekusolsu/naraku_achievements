@@ -226,7 +226,7 @@
                         <div class="flex-1 text-center md:text-left mt-4 md:mt-0">
                             <h2 id="user-name" class="text-2xl font-bold text-white flex flex-col md:flex-row items-center md:justify-start justify-center">--- <span class="md:ml-2 text-text-muted font-normal text-sm">#<span id="user-id-suffix">0000</span></span></h2>
                             <div class="flex flex-wrap justify-center md:justify-start gap-4 mt-2">
-                                <span class="text-xs font-bold uppercase text-text-muted">合計ポイント: <span id="total-points" class="text-yellow-400">0pt</span></span>
+                                <span class="text-xs font-bold uppercase text-text-muted">所持ポイント: <span id="total-points" class="text-yellow-400">0pt</span></span>
                                 <span class="text-xs font-bold uppercase text-text-muted">実績解除率: <span id="completion-percent" class="text-white">0%</span></span>
                                 <span class="text-xs font-bold uppercase text-text-muted">解除済み: <span id="completion-count" class="text-white">0</span> / <span id="total-count">0</span></span>
                             </div>
@@ -324,7 +324,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, getDocs, collection, setDoc, query, addDoc, collectionGroup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, getDocs, collection, setDoc, query, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
@@ -345,13 +345,8 @@
         const auth = getAuth(app);
 
         let currentUserData = null;
-        let myTotalPoints = 0; 
-        let mySpentPoints = 0; 
-        let legacySpentPoints = 0; // 追加: 古い仕様の消費ポイント
-        let myPurchases = {};  
-        let globalPurchasesCount = {}; 
-        let localPurchases = []; 
-
+        let myCurrentPoints = 0; // Firestoreから取得する現在の所持ポイント
+        
         let adminSettings = {
             shopItems: [
                 { id: "role_1373848568774922374", title: "無法メンバー", desc: "無法メンバーロール（ID：1373848568774922374）を付与します。", price: 50000, icon: "fa-skull", color: "text-red-500", limit: 1, limitType: "personal", reward: "1373848568774922374" },
@@ -476,13 +471,13 @@
             }, 4000);
         }
 
-        const renderAchievements = (dataToRender = achievementData, isSelf = true) => {
+        const renderAchievements = (dataToRender = achievementData, isSelf = true, firestorePoints = null) => {
             const grid = document.getElementById('achievements-grid');
             if(!grid) return;
             grid.innerHTML = '';
             
             let unlockedCount = 0;
-            let displayPoints = 0;
+            let calculatedTotalPoints = 0;
 
             dataToRender.forEach(ach => {
                 const requirement = ach.requirement;
@@ -490,7 +485,7 @@
                 const isUnlocked = ach.current >= requirement;
                 if (isUnlocked) {
                     unlockedCount++;
-                    displayPoints += currentPt;
+                    calculatedTotalPoints += currentPt;
                 }
 
                 const progressPercent = Math.min(100, (ach.current / requirement) * 100);
@@ -521,8 +516,13 @@
                 grid.appendChild(card);
             });
 
+            // 表示するポイントの決定ロジック
+            // Firestoreに 'points' フィールドがあればそれを優先（Bot側の操作を反映）
+            // なければ実績から計算
+            let displayPoints = firestorePoints !== null ? firestorePoints : calculatedTotalPoints;
+
             if (isSelf) {
-                myTotalPoints = displayPoints;
+                myCurrentPoints = displayPoints;
             }
             
             const totalPointsEl = document.getElementById('total-points');
@@ -531,9 +531,7 @@
             const compPercentEl = document.getElementById('completion-percent');
 
             if(totalPointsEl) {
-                // 合計ポイント(所持ポイント)として消費分を引いた額を表示する
-                const currentPts = isSelf ? Math.max(0, displayPoints - mySpentPoints - legacySpentPoints) : displayPoints;
-                totalPointsEl.innerText = `${currentPts.toLocaleString()}pt`;
+                totalPointsEl.innerText = `${displayPoints.toLocaleString()}pt`;
             }
             if(compCountEl) compCountEl.innerText = unlockedCount;
             if(totalCountEl) totalCountEl.innerText = achievementDataMaster.length;
@@ -560,7 +558,9 @@
                 return { ...ach, current: val };
             });
 
-            renderAchievements(targetAchievementData, false);
+            // 他のユーザーを見る時も、Firestoreに保存されたポイントがあればそれを使用
+            const targetPoints = targetData.points !== undefined ? targetData.points : null;
+            renderAchievements(targetAchievementData, false, targetPoints);
         };
 
         const renderRanking = async () => {
@@ -608,53 +608,30 @@
             if (!grid) return;
             grid.innerHTML = '';
             
-            try {
-                const globalPurchasesRef = collection(db, 'artifacts', APP_ID, 'public', 'data', 'globalPurchases');
-                const allSnap = await getDocs(globalPurchasesRef);
-                globalPurchasesCount = {};
-                allSnap.forEach(d => {
-                    const data = d.data();
-                    globalPurchasesCount[data.itemId] = (globalPurchasesCount[data.itemId] || 0) + 1;
-                });
-            } catch(e) {
-                console.error("Global purchases fetch error:", e);
-            }
-
-            // 消費ポイントをすべて引くように修正
-            const currentPoints = Math.max(0, myTotalPoints - mySpentPoints - legacySpentPoints);
+            // 所持ポイントの更新（最新の myCurrentPoints を使用）
             const shopPointsEl = document.getElementById('shop-current-points');
-            if (shopPointsEl) shopPointsEl.innerText = `${currentPoints.toLocaleString()}pt`;
+            if (shopPointsEl) shopPointsEl.innerText = `${myCurrentPoints.toLocaleString()}pt`;
 
             const shopItems = adminSettings.shopItems;
 
             shopItems.forEach(item => {
                 const limit = item.limit !== undefined ? Number(item.limit) : -1;
-                const limitType = item.limitType || "personal";
-                
-                const myCount = myPurchases[item.id] || 0;
-                const totalCount = globalPurchasesCount[item.id] || 0;
-                
-                const currentCount = limitType === "global" ? totalCount : myCount;
-                const isLimitReached = limit !== -1 && currentCount >= limit;
-                const canBuy = currentPoints >= item.price && !isLimitReached;
+                const canBuy = myCurrentPoints >= item.price;
 
                 let btnText = '交換方法を見る';
-                if (isLimitReached) {
-                    btnText = limitType === "global" ? '完売' : (limit === 1 ? '交換済み' : `上限到達 (${currentCount}/${limit})`);
-                } else if (currentPoints < item.price) {
+                if (myCurrentPoints < item.price) {
                     btnText = 'ポイント不足';
                 }
 
                 const card = document.createElement('div');
                 card.className = `achievement-card flex flex-col bg-[#232428] border border-[#1f2023] ${canBuy ? 'hover:border-discord-blue/50' : 'opacity-80'} transition-colors relative`;
 
-                const limitLabel = limit === -1 ? '無制限' : (limitType === "global" ? `在庫: ${Math.max(0, limit - totalCount)}` : `残り: ${Math.max(0, limit - myCount)}回`);
+                const limitLabel = limit === -1 ? '無制限' : `上限: ${limit}`;
 
                 card.innerHTML = `
                     <div class="flex items-start space-x-3 mb-3">
                         <div class="w-12 h-12 shrink-0 rounded-lg bg-bg-deep flex items-center justify-center border border-white/5 relative">
                             <i class="fas ${item.icon} ${item.color} text-2xl"></i>
-                            ${myCount > 0 ? `<div class="absolute -top-1 -right-1 bg-discord-green w-4 h-4 rounded-full border-[2px] border-bg-card flex items-center justify-center"><i class="fas fa-check text-[8px] text-white"></i></div>` : ''}
                         </div>
                         <div class="flex-1 min-w-0">
                             <h4 class="font-bold text-[#f2f3f5] text-sm">${item.title}</h4>
@@ -754,31 +731,6 @@
                     }
                 }, (err) => console.error("Admin Settings Error:", err));
 
-                const purchasesRef = collection(db, 'artifacts', APP_ID, 'users', user.uid, 'purchases');
-                onSnapshot(purchasesRef, (snap) => {
-                    mySpentPoints = 0;
-                    myPurchases = {};
-                    const serverIds = new Set();
-
-                    snap.forEach(docSnap => {
-                        const data = docSnap.data();
-                        mySpentPoints += data.price || 0;
-                        myPurchases[data.itemId] = (myPurchases[data.itemId] || 0) + 1;
-                        if (data.localId) serverIds.add(data.localId);
-                    });
-                    
-                    localPurchases.forEach(lp => {
-                        if (!serverIds.has(lp.localId)) {
-                            mySpentPoints += lp.price;
-                            myPurchases[lp.itemId] = (myPurchases[lp.itemId] || 0) + 1;
-                        }
-                    });
-                    
-                    const currentHeader = document.getElementById('header-title').innerText;
-                    if (currentHeader === 'point shop') renderShop();
-                    else if (currentHeader === 'achievements') renderAchievements(achievementData, true); // プロフィールのポイントも更新
-                }, (err) => console.error("Purchases Error:", err));
-
                 const params = new URLSearchParams(window.location.hash.slice(1));
                 const token = params.get('access_token');
                 if (token) {
@@ -803,8 +755,8 @@
                                 if (snapshot.exists()) {
                                     const data = snapshot.data();
                                     
-                                    // 古い仕様の消費ポイントを取得
-                                    legacySpentPoints = data.spentPoints || 0; 
+                                    // Firestoreから 'points' を取得
+                                    const firestorePoints = data.points !== undefined ? data.points : null;
 
                                     achievementData = achievementData.map(ach => {
                                         const newVal = data[ach.id] !== undefined ? Number(data[ach.id]) : 0;
@@ -816,12 +768,12 @@
                                     const currentHeader = document.getElementById('header-title').innerText;
                                     if (currentHeader === 'achievements') {
                                         const isViewingSelf = document.getElementById('user-name').innerText.includes(fullName);
-                                        if (isViewingSelf) renderAchievements(achievementData, true);
+                                        if (isViewingSelf) renderAchievements(achievementData, true, firestorePoints);
                                     } else if (currentHeader === 'point shop') {
-                                        renderAchievements(achievementData, true); 
+                                        renderAchievements(achievementData, true, firestorePoints); 
                                         renderShop();
                                     } else {
-                                        renderAchievements(achievementData, true); 
+                                        renderAchievements(achievementData, true, firestorePoints); 
                                     }
                                 }
                             }, (err) => console.error("User Stats Error:", err));
@@ -836,17 +788,13 @@
 
         init();
 
-        let selectedItemForPurchase = null;
-
         window.showConfirmModal = function(item) {
-            selectedItemForPurchase = item;
             document.getElementById('confirm-title').innerText = `${item.title}`;
             document.getElementById('custom-confirm-modal').classList.remove('hidden');
         };
 
         document.getElementById('confirm-cancel-btn').onclick = () => {
             document.getElementById('custom-confirm-modal').classList.add('hidden');
-            selectedItemForPurchase = null;
         };
 
         const adminModal = document.getElementById('admin-modal');
@@ -884,27 +832,12 @@
                             <input type="text" placeholder="ID" value="${item.id}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="id">
                         </div>
                         <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">交換品(ロールID等)</span>
-                            <input type="text" placeholder="ロールIDなど" value="${item.reward || ''}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="reward">
-                        </div>
-                        <div class="flex flex-col gap-1">
                             <span class="text-[10px] text-text-muted px-1">タイトル</span>
                             <input type="text" placeholder="タイトル" value="${item.title}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="title">
                         </div>
                         <div class="flex flex-col gap-1">
                             <span class="text-[10px] text-text-muted px-1">必要ポイント</span>
                             <input type="number" placeholder="価格" value="${item.price}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="price">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">制限数 (-1は無制限)</span>
-                            <input type="number" placeholder="制限数" value="${item.limit !== undefined ? item.limit : -1}" class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="limit">
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[10px] text-text-muted px-1">制限のタイプ</span>
-                            <select class="shop-input bg-[#2b2d31] text-white p-1.5 rounded text-sm w-full" data-index="${index}" data-field="limitType">
-                                <option value="personal" ${item.limitType === 'personal' ? 'selected' : ''}>個人制限</option>
-                                <option value="global" ${item.limitType === 'global' ? 'selected' : ''}>全体制限</option>
-                            </select>
                         </div>
                         <div class="flex flex-col gap-1">
                             <span class="text-[10px] text-text-muted px-1">アイコン (FontAwesome)</span>
